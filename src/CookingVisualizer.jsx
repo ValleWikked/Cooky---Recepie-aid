@@ -72,6 +72,12 @@ const STYLES = {
 };
 
 // ═══════════════════════════════════════════════════════════════
+// TOAST — global dispatcher set by App on mount
+// ═══════════════════════════════════════════════════════════════
+
+let _showToast = null;
+
+// ═══════════════════════════════════════════════════════════════
 // EQUIPMENT PROFILES — localStorage-backed profile store
 // ═══════════════════════════════════════════════════════════════
 
@@ -148,7 +154,10 @@ const EquipmentProfiles = {
           this._profiles = parsed;
         }
       }
-    } catch (e) { /* corrupt data — fall back to defaults */ }
+    } catch (e) {
+      // Corrupt data — reset to defaults + notify user
+      _showToast?.('Данные оборудования повреждены. Настройки сброшены.');
+    }
     if (!this._profiles) {
       this._profiles = DEFAULT_PROFILES.map(p => ({ ...p }));
       this._save();
@@ -209,7 +218,10 @@ const CalibrationStore = {
           this._data = parsed;
         }
       }
-    } catch (e) { /* corrupt — start fresh */ }
+    } catch (e) {
+      // Corrupt — start fresh + notify user
+      _showToast?.('Данные калибровок повреждены. Настройки сброшены.');
+    }
     if (!this._data) {
       this._data = {};
     }
@@ -901,6 +913,60 @@ function useReducedMotion() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// ErrorBoundary — catches render errors, prevents white screen
+// ═══════════════════════════════════════════════════════════════
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('[CookingVisualizer] Render error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          maxWidth: '500px', margin: '60px auto', padding: '32px 24px',
+          backgroundColor: THEME.card, border: `1px solid ${THEME.border}`,
+          borderRadius: '12px', color: THEME.text, textAlign: 'center',
+          fontFamily: 'Georgia, serif',
+        }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: '16px' }}>⚠</div>
+          <h2 style={{
+            fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: '1.3rem',
+            margin: '0 0 12px 0',
+          }}>
+            Что-то пошло не так
+          </h2>
+          <p style={{
+            fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.9rem',
+            margin: '0 0 24px 0', lineHeight: '1.5',
+          }}>
+            Произошла ошибка при отображении. Попробуйте обновить страницу.
+          </p>
+          <button onClick={() => window.location.reload()} style={{
+            padding: '10px 28px', borderRadius: '8px', border: 'none',
+            backgroundColor: THEME.gold, color: THEME.bg, cursor: 'pointer',
+            fontFamily: 'Georgia, serif', fontSize: '1rem', fontWeight: 'bold',
+          }}>
+            Обновить
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
 // Accuracy tag component
 // ═══════════════════════════════════════════════════════════════
 
@@ -1027,7 +1093,20 @@ function IngredientPanel() {
         </button>
       </div>
 
-      {INGREDIENTS.map((ing, i) => {
+      {INGREDIENTS.length === 0 ? (
+        <div style={{
+          ...STYLES.card, padding: '32px 16px', textAlign: 'center',
+        }}>
+          <div style={{ fontSize: '2rem', marginBottom: '12px' }}>📋</div>
+          <p style={{
+            fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.95rem',
+            margin: 0,
+          }}>
+            Нет данных об ингредиентах
+          </p>
+        </div>
+      ) : (
+      INGREDIENTS.map((ing, i) => {
         const isExpanded = expandedCards[i] || false;
         const necColor = NECESSITY_COLORS[ing.necessity] || THEME.textDim;
         const zoneType = ing.toleranceZone.type;
@@ -1166,6 +1245,8 @@ function IngredientPanel() {
           </div>
         );
       })}
+      )
+      }
     </div>
   );
 }
@@ -1345,8 +1426,21 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
         </div>
       </div>
 
-      {/* Step cards */}
-      {STEPS.map((step, i) => {
+      {STEPS.length === 0 ? (
+        <div style={{
+          ...STYLES.card, padding: '32px 16px', textAlign: 'center',
+        }}>
+          <div style={{ fontSize: '2rem', marginBottom: '12px' }}>📝</div>
+          <p style={{
+            fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.95rem',
+            margin: 0,
+          }}>
+            Нет данных о шагах приготовления
+          </p>
+        </div>
+      ) : (
+      /* Step cards */
+      STEPS.map((step, i) => {
         const isExpanded = expandedSteps[i] || false;
         const eq = step.equipment ? EquipmentProfiles.getById(step.equipment) : null;
         const deletedEq = step.equipment && !eq;
@@ -1629,6 +1723,8 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
           </div>
         );
       })}
+      )
+      }
 
       {/* Equipment-to-step mapping table */}
       <div style={{ marginTop: '20px' }}>
@@ -2047,8 +2143,27 @@ function EquipmentSettingsPanel({ onClose }) {
           }}>✕</button>
         </div>
 
-        {/* Profile list */}
-        {profiles.map((profile) => {
+        {profiles.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '32px 16px' }}>
+            <div style={{ fontSize: '2.5rem', marginBottom: '16px' }}>🔌</div>
+            <p style={{
+              fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.95rem',
+              margin: '0 0 20px 0',
+            }}>
+              Нет устройств. Добавьте первое устройство.
+            </p>
+            <button onClick={() => { resetForm(); setShowAddForm(true); }} style={{
+              padding: '12px 28px', borderRadius: '8px',
+              border: 'none', backgroundColor: THEME.gold, color: THEME.bg,
+              cursor: 'pointer', fontFamily: 'Georgia, serif',
+              fontSize: '1rem', fontWeight: 'bold',
+            }}>
+              + Добавить устройство
+            </button>
+          </div>
+        ) : (
+        /* Profile list */
+        profiles.map((profile) => {
           const ti = typeInfo(profile.type);
           return (
             <div key={profile.id} style={{
@@ -2093,6 +2208,8 @@ function EquipmentSettingsPanel({ onClose }) {
             </div>
           );
         })}
+        )
+        }
 
         {/* Delete confirmation */}
         {confirmDeleteId && (() => {
@@ -2274,6 +2391,35 @@ function EquipmentSettingsPanel({ onClose }) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// Toast — floating notification component
+// ═══════════════════════════════════════════════════════════════
+
+function Toast({ message, onDone }) {
+  useEffect(() => {
+    if (!message) return;
+    const timer = setTimeout(onDone, 4000);
+    return () => clearTimeout(timer);
+  }, [message, onDone]);
+
+  if (!message) return null;
+
+  return (
+    <div style={{
+      position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)',
+      zIndex: 2000,
+      backgroundColor: THEME.card, border: `1px solid ${THEME.goldDim}`,
+      borderRadius: '8px', padding: '12px 24px',
+      color: THEME.text, fontFamily: 'Georgia, serif', fontSize: '0.9rem',
+      boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+      animation: 'cv-fade-in 300ms ease forwards',
+      maxWidth: '90vw',
+    }}>
+      ⚠ {message}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
 // App — root component
 // ═══════════════════════════════════════════════════════════════
 
@@ -2285,6 +2431,13 @@ function App() {
   const [tabVisible, setTabVisible] = useState('ingredients');
   const [tabFading, setTabFading] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  // Register global toast dispatcher for storage modules
+  useEffect(() => {
+    _showToast = setToast;
+    return () => { _showToast = null; };
+  }, []);
 
   // Inject animation CSS once
   useEffect(() => {
@@ -2309,52 +2462,55 @@ function App() {
   };
 
   return (
-    <div className="cv-animated" style={{
-      maxWidth: '800px',
-      margin: '0 auto',
-      padding: isMobile ? '12px 8px' : '24px 16px',
-      backgroundColor: THEME.bg,
-      minHeight: '100vh',
-      fontFamily: 'Georgia, serif',
-      color: THEME.text,
-      overflowX: 'hidden',
-    }}>
-      {/* Header row: tabs + gear icon */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '12px' }}>
-        <div style={{ flex: 1 }}>
-          <TabBar activeTab={tabVisible} onTabChange={switchTab} />
-        </div>
-        <button
-          onClick={() => setSettingsOpen(true)}
-          title="Настройки оборудования"
-          style={{
-            background: 'none', border: `1px solid ${THEME.border}`, borderRadius: '8px',
-            color: THEME.textDim, cursor: 'pointer',
-            width: isMobile ? '44px' : undefined,
-            height: isMobile ? '44px' : undefined,
-            minWidth: '44px',
-            minHeight: '44px',
-            padding: isMobile ? '0' : '8px 10px',
-            fontSize: isMobile ? '1.4rem' : '1.2rem',
-            lineHeight: '1',
-            marginBottom: isMobile ? '12px' : '20px',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >⚙️</button>
-      </div>
-
-      <div style={reduceMotion ? {} : {
-        animation: tabFading ? 'cv-fade-out 150ms ease forwards' : 'cv-fade-in 150ms ease forwards',
+    <ErrorBoundary>
+      <div className="cv-animated" style={{
+        maxWidth: '800px',
+        margin: '0 auto',
+        padding: isMobile ? '12px 8px' : '24px 16px',
+        backgroundColor: THEME.bg,
+        minHeight: '100vh',
+        fontFamily: 'Georgia, serif',
+        color: THEME.text,
+        overflowX: 'hidden',
       }}>
-        {activeTab === 'ingredients'
-          ? <IngredientPanel />
-          : <ActionStepsPanel onOpenSettings={() => setSettingsOpen(true)} verificationReport={verificationReport} />
-        }
-      </div>
+        {/* Header row: tabs + gear icon */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '12px' }}>
+          <div style={{ flex: 1 }}>
+            <TabBar activeTab={tabVisible} onTabChange={switchTab} />
+          </div>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            title="Настройки оборудования"
+            style={{
+              background: 'none', border: `1px solid ${THEME.border}`, borderRadius: '8px',
+              color: THEME.textDim, cursor: 'pointer',
+              width: isMobile ? '44px' : undefined,
+              height: isMobile ? '44px' : undefined,
+              minWidth: '44px',
+              minHeight: '44px',
+              padding: isMobile ? '0' : '8px 10px',
+              fontSize: isMobile ? '1.4rem' : '1.2rem',
+              lineHeight: '1',
+              marginBottom: isMobile ? '12px' : '20px',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >⚙️</button>
+        </div>
 
-      {settingsOpen && (
-        <EquipmentSettingsPanel onClose={() => setSettingsOpen(false)} />
-      )}
-    </div>
+        <div style={reduceMotion ? {} : {
+          animation: tabFading ? 'cv-fade-out 150ms ease forwards' : 'cv-fade-in 150ms ease forwards',
+        }}>
+          {activeTab === 'ingredients'
+            ? <IngredientPanel />
+            : <ActionStepsPanel onOpenSettings={() => setSettingsOpen(true)} verificationReport={verificationReport} />
+          }
+        </div>
+
+        {settingsOpen && (
+          <EquipmentSettingsPanel onClose={() => setSettingsOpen(false)} />
+        )}
+      </div>
+      <Toast message={toast} onDone={() => setToast(null)} />
+    </ErrorBoundary>
   );
 }
