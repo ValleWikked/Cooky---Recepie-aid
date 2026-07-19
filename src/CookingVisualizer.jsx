@@ -156,7 +156,7 @@ const EquipmentProfiles = {
       }
     } catch (e) {
       // Corrupt data — reset to defaults + notify user
-      _showToast?.('Данные оборудования повреждены. Настройки сброшены.');
+      _showToast?.('Equipment data corrupted. Settings have been reset.');
     }
     if (!this._profiles) {
       this._profiles = DEFAULT_PROFILES.map(p => ({ ...p }));
@@ -220,7 +220,7 @@ const CalibrationStore = {
       }
     } catch (e) {
       // Corrupt — start fresh + notify user
-      _showToast?.('Данные калибровок повреждены. Настройки сброшены.');
+      _showToast?.('Calibration data corrupted. Settings have been reset.');
     }
     if (!this._data) {
       this._data = {};
@@ -268,384 +268,381 @@ const CalibrationStore = {
 const COLUMNS = ['0', '½×', '¾×', '1×', '⁵⁄₄×', '3/2×'];
 
 const MATRIX_COLS = [
-  { label: '0', desc: 'Пропустить' },
-  { label: '½×', desc: 'Половина' },
-  { label: '¾×', desc: 'Три четверти' },
-  { label: '1×', desc: 'Норма' },
-  { label: '⁵⁄₄×', desc: 'С четвертью' },
-  { label: '3/2×', desc: 'Полторы' },
+  { label: '0', desc: 'Skip' },
+  { label: '½×', desc: 'Half' },
+  { label: '¾×', desc: 'Three Quarters' },
+  { label: '1×', desc: 'Normal' },
+  { label: '⁵⁄₄×', desc: 'Plus Quarter' },
+  { label: '3/2×', desc: 'One and a Half' },
 ];
 
 const INGREDIENTS = [
   {
-    name: 'Нут сухой',
-    role: 'Основа блюда — структура, текстура, белок',
-    necessity: 'ОСНОВА',
-    amount: '250 g (сухой)',
-    toleranceZone: { type: 'base', description: 'Основа рецепта — не варьируется' },
+    name: 'Dried Chickpeas',
+    role: 'Dish foundation — structure, texture, protein',
+    necessity: 'BASE',
+    amount: '250 g (dry)',
+    toleranceZone: { type: 'base', description: 'Recipe foundation — does not vary' },
     variants: [],
     substitutions: [],
     empirical: false,
     matrix: [
-      { verdict: 'Нет блюда', consequence: 'Без нута фалафель невозможен' },
-      { verdict: 'Слишком мало', consequence: 'Не хватит на полноценную порцию' },
-      { verdict: 'Малая порция', consequence: 'Хватит на 1-2 порции вместо 4' },
-      { verdict: '✓ Норма', consequence: 'Стандартная порция на 4 человек' },
-      { verdict: 'Можно', consequence: 'Больше порций, пропорционально остальным ингредиентам' },
-      { verdict: 'Можно', consequence: 'Увеличенная партия' },
+      { verdict: 'No dish', consequence: 'Falafel is impossible without chickpeas' },
+      { verdict: 'Too little', consequence: 'Not enough for a full serving' },
+      { verdict: 'Small portion', consequence: 'Enough for 1–2 servings instead of 4' },
+      { verdict: '✓ Normal', consequence: 'Standard serving for 4 people' },
+      { verdict: 'OK', consequence: 'More servings, scale other ingredients proportionally' },
+      { verdict: 'OK', consequence: 'Larger batch' },
     ],
   },
   {
-    name: 'Лук репчатый',
-    role: 'Сладость, ароматическая глубина, влажность в сырой смеси',
-    necessity: 'ВАЖНО',
-    amount: '80 g (~1 средняя луковица)',
-    toleranceZone: { type: 'wide_below', description: '¾× ≈ 1× — широкий допуск вниз; умеренный вверх' },
+    name: 'Onion',
+    role: 'Sweetness, aromatic depth, moisture in raw mix',
+    necessity: 'IMPORTANT',
+    amount: '80 g (~1 medium onion)',
     variants: [
-      { label: 'Свежий', description: 'Стандарт. Выделяет влагу при нарезке — учитывать при связывании.', quantity: '80 g' },
-      { label: 'Сушёный (порошок)', description: '~1 ч.л. вместо 80 g. Не даёт влаги — смесь суше.', quantity: '1 ч.л.' },
-      { label: 'Шалот', description: 'Нежнее, слаще, меньше влаги.', quantity: '80–90 g' },
-      { label: 'Зелёный лук', description: 'Мягче, менее сладкий. Только белые и светло-зелёные части.', quantity: '~60 g' },
-      { label: 'Красный лук', description: 'Острее в сыром виде, больше цвета.', quantity: '80 g' },
+      { label: 'Fresh', description: 'Standard. Releases moisture when chopped — account for binding.', quantity: '80 g' },
+      { label: 'Dried (powder)', description: '~1 tsp instead of 80 g. Adds no moisture — mix is drier.', quantity: '1 tsp' },
+      { label: 'Shallot', description: 'Milder, sweeter, less moisture.', quantity: '80–90 g' },
+      { label: 'Scallion', description: 'Milder, less sweet. White and light green parts only.', quantity: '~60 g' },
+      { label: 'Red onion', description: 'Sharper raw, more color.', quantity: '80 g' },
     ],
     substitutions: [
-      { name: 'Шалот', description: 'Ближайший заменитель, более изысканный вкус.', note: 'Те же пропорции или +10%' },
-      { name: 'Луковый порошок', description: 'Работает если снижение влажности допустимо.', note: '~1 ч.л. вместо 80 g' },
-      { name: 'Пропуск', description: 'Возможен в фалафеле — блюдо работает, просто меньше сладкой глубины.', note: 'Вкус станет плоским' },
+      { name: 'Shallot', description: 'Closest substitute, more refined flavor.', note: 'Same proportions or +10%' },
+      { name: 'Onion powder', description: 'Works if reduced moisture is acceptable.', note: '~1 tsp instead of 80 g' },
+      { name: 'Skip', description: 'Possible in falafel — dish works, just less sweet depth.', note: 'Flavor will become flat' },
     ],
     empirical: false,
     matrix: [
-      { verdict: 'Плоский вкус', consequence: 'Нет сладкой основы. Вкус одномерный.' },
-      { verdict: 'Слабый фон', consequence: 'Тонкий намёк сладости. Текстура лучше в сырых смесях (меньше влаги).' },
-      { verdict: '✓ Баланс', consequence: 'Практически тот же результат что и 1×. В зоне допуска.' },
-      { verdict: '✓ Баланс', consequence: 'Правильная сладость и ароматическая глубина. Влажность учтена.' },
-      { verdict: 'Начинает водянить', consequence: 'В сырых смесях: лишняя влага → больше связующего → плотнее результат.' },
-      { verdict: 'Водянисто', consequence: 'Явный избыток влаги. Требуется значительно больше связующего.' },
+      { verdict: 'Flat flavor', consequence: 'No sweet foundation. One-dimensional taste.' },
+      { verdict: 'Weak background', consequence: 'Faint hint of sweetness. Texture better in raw mixes (less moisture).' },
+      { verdict: '✓ Balanced', consequence: 'Nearly the same result as 1×. Within tolerance zone.' },
+      { verdict: '✓ Balanced', consequence: 'Proper sweetness and aromatic depth. Moisture accounted for.' },
+      { verdict: 'Getting watery', consequence: 'In raw mixes: excess moisture → more binder → denser result.' },
+      { verdict: 'Watery', consequence: 'Clear excess moisture. Significantly more binder required.' },
     ],
   },
   {
-    name: 'Чеснок',
-    role: 'Острота, ароматическая глубина, пикантность',
-    necessity: 'ВАЖНО',
-    amount: '3–4 зубчика (~15 g)',
-    toleranceZone: { type: 'wide_below', description: 'Широкий допуск вниз; умеренный вверх' },
+    name: 'Garlic',
+    role: 'Sharpness, aromatic depth, pungency',
+    necessity: 'IMPORTANT',
+    amount: '3–4 cloves (~15 g)',
+    toleranceZone: { type: 'wide_below', description: 'Wide tolerance downward; moderate upward' },
     variants: [
-      { label: 'Свежий', description: 'Стандарт. Интенсивность зависит от сорта и возраста.', quantity: '3–4 зубчика' },
-      { label: 'Чесночный порошок', description: '~½ ч.л. вместо 3 зубчиков. Равномернее распределение.', quantity: '½ ч.л.' },
-      { label: 'Печёный чеснок', description: 'Мягче, слаще. Увеличить количество в 1.5×.', quantity: '5–6 зубчиков' },
+      { label: 'Fresh', description: 'Standard. Intensity depends on variety and age.', quantity: '3–4 cloves' },
     ],
     substitutions: [
-      { name: 'Чесночный порошок', description: 'Равномерное распределение, без влаги.', note: '½ ч.л. за 3 зубчика' },
-      { name: 'Пропуск', description: 'Заметно, но не критично — блюдо станет пресным.', note: 'Потеря пикантности' },
+      { name: 'Garlic powder', description: 'Even distribution, no moisture.', note: '½ tsp per 3 cloves' },
+      { name: 'Omit', description: 'Noticeable but not critical — dish becomes bland.', note: 'Loss of pungency' },
     ],
     empirical: false,
     matrix: [
-      { verdict: 'Пресно', consequence: 'Нет чесночной остроты. Блюдо плоское.' },
-      { verdict: 'Слабый чеснок', consequence: 'Едва заметно. Подходит для чувствительных к чесноку.' },
-      { verdict: '✓ Мягкий фон', consequence: 'Приятный чесночный фон без доминирования.' },
-      { verdict: '✓ Выраженный', consequence: 'Яркий чесночный вкус — классический фалафель.' },
-      { verdict: 'Чесночный удар', consequence: 'Чеснок доминирует. Может перебить кумин и кориандр.' },
-      { verdict: 'Перебор', consequence: 'Чесночная бомба. Забивает все остальные вкусы.' },
+      { verdict: 'Bland', consequence: 'No garlic pungency. Dish is flat.' },
+      { verdict: 'Weak garlic', consequence: 'Barely noticeable. Suitable for garlic-sensitive eaters.' },
+      { verdict: '✓ Mild background', consequence: 'Pleasant garlic background without dominating.' },
+      { verdict: '✓ Pronounced', consequence: 'Bright garlic flavour — classic falafel.' },
+      { verdict: 'Garlic punch', consequence: 'Garlic dominates. May overpower cumin and coriander.' },
+      { verdict: 'Too much', consequence: 'Garlic bomb. Drowns out all other flavours.' },
     ],
   },
   {
-    name: 'Петрушка свежая',
-    role: 'Свежесть, травяной аромат, зелёный цвет',
-    necessity: 'ОПЦИОНАЛЬНО',
-    amount: '20 g (пучок, только листья)',
-    toleranceZone: { type: 'wide', description: 'Широкий допуск — 0 приемлемо, 3/2× всё ещё хорошо' },
+    name: 'Fresh Parsley',
+    role: 'Freshness, herbal aroma, green color',
+    necessity: 'OPTIONAL',
+    amount: '20 g (bunch, leaves only)',
+    toleranceZone: { type: 'wide', description: 'Wide tolerance — 0 acceptable, 3/2× still fine' },
     variants: [
-      { label: 'Свежая', description: 'Стандарт. Только листья, без стеблей.', quantity: '20 g' },
-      { label: 'Кинза', description: 'Более яркий, цитрусовый оттенок. Не всем нравится.', quantity: '20 g' },
-      { label: 'Сушёная', description: 'Слабее аромат. Использовать 1 ст.л. вместо пучка.', quantity: '1 ст.л.' },
+      { label: 'Fresh', description: 'Standard. Leaves only, no stems.', quantity: '20 g' },
+      { label: 'Cilantro', description: 'Brighter, citrusy note. Not everyone likes it.', quantity: '20 g' },
+      { label: 'Dried', description: 'Weaker aroma. Use 1 tbsp instead of a bunch.', quantity: '1 tbsp' },
     ],
     substitutions: [
-      { name: 'Кинза', description: 'Ярче, цитрусовый оттенок. Классическая альтернатива.', note: 'Та же пропорция' },
-      { name: 'Укроп', description: 'Другой профиль — анисовый оттенок.', note: '15 g, не всем подходит' },
-      { name: 'Пропуск', description: 'Полностью допустимо. Вкус чище, но менее сложный.', note: 'Цвет бледнее' },
+      { name: 'Cilantro', description: 'Brighter, citrusy note. Classic alternative.', note: 'Same proportion' },
+      { name: 'Dill', description: 'Different profile — anise note.', note: '15 g, not for everyone' },
+      { name: 'Skip', description: 'Totally acceptable. Cleaner flavor, but less complex.', note: 'Paler color' },
     ],
     empirical: false,
     matrix: [
-      { verdict: '✓ Допустимо', consequence: 'Без зелени. Чище вкус, бледнее цвет.' },
-      { verdict: 'Лёгкий намёк', consequence: 'Едва заметная травяная нота.' },
-      { verdict: '✓ Зелень', consequence: 'Приятный травяной фон.' },
-      { verdict: '✓ Свежесть', consequence: 'Яркая зелень — классический баланс.' },
-      { verdict: 'Много зелени', consequence: 'Травяной вкус выражен. Цвет зеленее.' },
-      { verdict: '✓ Всё ещё хорошо', consequence: 'Очень зелёный фалафель. Допустимо.' },
+      { verdict: '✓ Acceptable', consequence: 'No herbs. Cleaner flavor, paler color.' },
+      { verdict: 'Light hint', consequence: 'Barely noticeable herbal note.' },
+      { verdict: '✓ Herbal', consequence: 'Pleasant herbal background.' },
+      { verdict: '✓ Fresh', consequence: 'Bright herbs — classic balance.' },
+      { verdict: 'Lots of herbs', consequence: 'Herbal flavor pronounced. Greener color.' },
+      { verdict: '✓ Still good', consequence: 'Very green falafel. Acceptable.' },
     ],
   },
   {
-    name: 'Кумин молотый',
-    role: 'Теплота, землистость, ключевая восточная нота',
-    necessity: 'ВАЖНО',
-    amount: '1½ ч.л.',
-    toleranceZone: { type: 'narrow_above', description: 'Умеренный допуск вниз; УЗКИЙ вверх — даже небольшой перебор заметен' },
+    name: 'Ground Cumin',
+    role: 'Warmth, earthiness, key Middle-Eastern note',
+    necessity: 'IMPORTANT',
+    amount: '1½ tsp',
+    toleranceZone: { type: 'narrow_above', description: 'Moderate tolerance downward; NARROW upward — even slight excess is noticeable' },
     variants: [
-      { label: 'Молотый', description: 'Стандарт. Интенсивность падает со временем хранения.', quantity: '1½ ч.л.' },
-      { label: 'Целые семена', description: 'Обжарить и смолоть для максимального аромата.', quantity: '1 ч.л. семян' },
+      { label: 'Ground', description: 'Standard. Intensity fades over storage time.', quantity: '1½ tsp' },
+      { label: 'Whole seeds', description: 'Toast and grind for maximum aroma.', quantity: '1 tsp seeds' },
     ],
     substitutions: [
-      { name: 'Семена кумина', description: 'Обжарить и смолоть — ярче аромат.', note: '1 ч.л. семян = 1½ ч.л. молотого' },
-      { name: 'Пропуск', description: 'НЕ РЕКОМЕНДУЕТСЯ. Кумин — ключевая восточная нота.', note: 'Потеря аутентичности' },
+      { name: 'Cumin seeds', description: 'Toast and grind — brighter aroma.', note: '1 tsp seeds = 1½ tsp ground' },
+      { name: 'Skip', description: 'NOT RECOMMENDED. Cumin is the key Middle-Eastern note.', note: 'Loss of authenticity' },
     ],
     empirical: false,
     matrix: [
-      { verdict: 'Пресно', consequence: 'Нет восточного характера. Фалафель теряет идентичность.' },
-      { verdict: 'Слабый фон', consequence: 'Тонкий намёк. Теряется на фоне чеснока.' },
-      { verdict: '✓ Мягкий', consequence: 'Тёплая нота без доминирования.' },
-      { verdict: '✓ Классика', consequence: 'Правильный восточный профиль.' },
-      { verdict: 'Горчит', consequence: 'Кумин начинает горчить. Перекрывает кориандр.' },
-      { verdict: 'Горький дым', consequence: 'Выраженная горечь. Блюдо испорчено.' },
+      { verdict: 'Bland', consequence: 'No Middle-Eastern character. Falafel loses identity.' },
+      { verdict: 'Weak background', consequence: 'Faint hint. Lost against the garlic.' },
+      { verdict: '✓ Mild', consequence: 'Warm note without dominating.' },
+      { verdict: '✓ Classic', consequence: 'Proper Middle-Eastern profile.' },
+      { verdict: 'Bitter', consequence: 'Cumin starts to taste bitter. Overpowers coriander.' },
+      { verdict: 'Bitter smoke', consequence: 'Pronounced bitterness. Dish ruined.' },
     ],
   },
   {
-    name: 'Кориандр молотый',
-    role: 'Цитрусовая нота, округлость, балансирует кумин',
-    necessity: 'ВАЖНО',
-    amount: '1 ч.л.',
-    toleranceZone: { type: 'moderate', description: 'Умеренный допуск в обе стороны' },
+    name: 'Ground Coriander',
+    role: 'Citrus note, roundness, balances cumin',
+    necessity: 'IMPORTANT',
+    amount: '1 tsp',
+    toleranceZone: { type: 'moderate', description: 'Moderate tolerance both ways' },
     variants: [
-      { label: 'Молотый', description: 'Стандарт.', quantity: '1 ч.л.' },
-      { label: 'Целые семена', description: 'Обжарить и смолоть.', quantity: '¾ ч.л. семян' },
+      { label: 'Ground', description: 'Standard.', quantity: '1 tsp' },
+      { label: 'Whole seeds', description: 'Toast and grind.', quantity: '¾ tsp seeds' },
     ],
     substitutions: [
-      { name: 'Семена кориандра', description: 'Обжарить и смолоть — цитрусовее.', note: '¾ ч.л. семян' },
-      { name: 'Пропуск', description: 'Заметно — вкус станет менее округлым.', note: 'Кумин будет доминировать' },
+      { name: 'Coriander seeds', description: 'Toast and grind — more citrusy.', note: '¾ tsp seeds' },
+      { name: 'Skip', description: 'Noticeable — flavor will be less rounded.', note: 'Cumin will dominate' },
     ],
     empirical: false,
     matrix: [
-      { verdict: 'Плосковато', consequence: 'Не хватает цитрусовой ноты. Кумин слишком выделяется.' },
-      { verdict: 'Слабый цитрус', consequence: 'Едва заметная округлость.' },
-      { verdict: '✓ Лёгкий', consequence: 'Приятный баланс с кумином.' },
-      { verdict: '✓ Баланс', consequence: 'Правильное соотношение кумин/кориандр.' },
-      { verdict: 'Цитрус доминирует', consequence: 'Кориандр выходит на первый план.' },
-      { verdict: 'Мыльный привкус', consequence: 'У некоторых людей генетическая чувствительность к кориандру.' },
+      { verdict: 'Flat-ish', consequence: 'Missing citrus note. Cumin stands out too much.' },
+      { verdict: 'Weak citrus', consequence: 'Barely noticeable roundness.' },
+      { verdict: '✓ Light', consequence: 'Pleasant balance with cumin.' },
+      { verdict: '✓ Balanced', consequence: 'Proper cumin/coriander ratio.' },
+      { verdict: 'Citrus dominates', consequence: 'Coriander comes to the foreground.' },
+      { verdict: 'Soapy aftertaste', consequence: 'Some people have genetic sensitivity to coriander.' },
     ],
   },
   {
-    name: 'Соль',
-    role: 'Усилитель вкуса, критический баланс',
-    necessity: 'ВАЖНО',
-    amount: '1 ч.л. (~5 g)',
-    toleranceZone: { type: 'narrow_both', description: 'УЗКИЙ в обе стороны — соль очень чувствительна' },
+    name: 'Salt',
+    role: 'Flavor enhancer, critical balance',
+    necessity: 'IMPORTANT',
+    amount: '1 tsp (~5 g)',
+    toleranceZone: { type: 'narrow_both', description: 'NARROW both ways — salt is very sensitive' },
     variants: [
-      { label: 'Мелкая', description: 'Стандарт. Равномерно распределяется.', quantity: '1 ч.л.' },
-      { label: 'Крупная (кошерная)', description: 'Менее плотная — 1¼ ч.л. вместо 1 ч.л.', quantity: '1¼ ч.л.' },
-      { label: 'Морская', description: 'Аналогично крупной.', quantity: '1¼ ч.л.' },
+      { label: 'Fine', description: 'Standard. Distributes evenly.', quantity: '1 tsp' },
+      { label: 'Coarse (kosher)', description: 'Less dense — 1¼ tsp instead of 1 tsp.', quantity: '1¼ tsp' },
+      { label: 'Sea salt', description: 'Similar to coarse.', quantity: '1¼ tsp' },
     ],
     substitutions: [
-      { name: 'Соевый соус', description: 'Другой профиль вкуса. Добавляет умами.', note: '1 ст.л. ≈ 1 ч.л. соли, но меняет вкус' },
+      { name: 'Soy sauce', description: 'Different flavor profile. Adds umami.', note: '1 tbsp ≈ 1 tsp salt, but changes flavor' },
     ],
     empirical: false,
     matrix: [
-      { verdict: 'Пресно', consequence: 'Никакого вкуса. Блюдо несъедобно.' },
-      { verdict: 'Недосол', consequence: 'Вкус приглушён. Заметно не хватает.' },
-      { verdict: 'Слабовато', consequence: 'Терпимо, но не хватает яркости.' },
-      { verdict: '✓ Баланс', consequence: 'Правильный уровень соли.' },
-      { verdict: 'Пересол', consequence: 'Соль чувствуется явно. Маскирует специи.' },
-      { verdict: 'Сильно пересол', consequence: 'Несъедобно.' },
+      { verdict: 'Bland', consequence: 'No flavor at all. Dish is inedible.' },
+      { verdict: 'Undersalted', consequence: 'Flavor is muted. Noticeably lacking.' },
+      { verdict: 'Weak-ish', consequence: 'Tolerable, but lacks brightness.' },
+      { verdict: '✓ Balanced', consequence: 'Proper salt level.' },
+      { verdict: 'Oversalty', consequence: 'Salt is clearly noticeable. Masks spices.' },
+      { verdict: 'Too salty', consequence: 'Inedible.' },
     ],
   },
   {
-    name: 'Чёрный перец',
-    role: 'Лёгкая острота, фоновая нота',
-    necessity: 'УСЛОВНЫЙ',
-    amount: '½ ч.л.',
-    toleranceZone: { type: 'very_wide', description: 'Очень широкий — все 6 колонок в зоне допуска' },
+    name: 'Black Pepper',
+    role: 'Mild heat, background note',
+    necessity: 'CONDITIONAL',
+    amount: '½ tsp',
+    toleranceZone: { type: 'very_wide', description: 'Very wide — all 6 columns in tolerance zone' },
     variants: [
-      { label: 'Молотый', description: 'Стандарт.', quantity: '½ ч.л.' },
-      { label: 'Свежемолотый', description: 'Ароматнее.', quantity: '½ ч.л.' },
-      { label: 'Белый перец', description: 'Мягче, менее ароматный.', quantity: '½ ч.л.' },
+      { label: 'Ground', description: 'Standard.', quantity: '½ tsp' },
+      { label: 'Freshly ground', description: 'More aromatic.', quantity: '½ tsp' },
+      { label: 'White pepper', description: 'Milder, less aromatic.', quantity: '½ tsp' },
     ],
     substitutions: [
-      { name: 'Белый перец', description: 'Мягче, для светлых блюд.', note: 'Та же пропорция' },
-      { name: 'Кайенский перец', description: 'Острее — другой профиль.', note: '¼ ч.л., осторожно' },
-      { name: 'Пропуск', description: 'Без последствий.', note: 'Вкус чуть проще' },
+      { name: 'White pepper', description: 'Milder, for light-colored dishes.', note: 'Same proportion' },
+      { name: 'Cayenne pepper', description: 'Hotter — different profile.', note: '¼ tsp, careful' },
+      { name: 'Skip', description: 'No consequences.', note: 'Flavor slightly simpler' },
     ],
     empirical: false,
     matrix: [
-      { verdict: '✓ Ок', consequence: 'Без перца — вкус немного проще.' },
-      { verdict: '✓ Ок', consequence: 'Лёгкий намёк остроты.' },
-      { verdict: '✓ Ок', consequence: 'Приятный фон.' },
-      { verdict: '✓ Норма', consequence: 'Классический уровень.' },
-      { verdict: '✓ Ок', consequence: 'Заметная острота.' },
-      { verdict: '✓ Ок', consequence: 'Острый, но не критично.' },
+      { verdict: '✓ OK', consequence: 'No pepper — flavor slightly simpler.' },
+      { verdict: '✓ OK', consequence: 'Light hint of heat.' },
+      { verdict: '✓ OK', consequence: 'Pleasant background.' },
+      { verdict: '✓ Normal', consequence: 'Classic level.' },
+      { verdict: '✓ OK', consequence: 'Noticeable heat.' },
+      { verdict: '✓ OK', consequence: 'Spicy, but not critical.' },
     ],
   },
   {
-    name: 'Разрыхлитель',
-    role: 'Воздушность, лёгкость текстуры',
-    necessity: 'УСЛОВНЫЙ',
-    amount: '½ ч.л.',
-    toleranceZone: { type: 'narrow_above', description: 'Умеренный вниз; УЗКИЙ вверх — избыток даёт химический привкус' },
+    name: 'Baking Powder',
+    role: 'Airiness, lightness of texture',
+    necessity: 'CONDITIONAL',
+    amount: '½ tsp',
+    toleranceZone: { type: 'narrow_above', description: 'Moderate downward; NARROW upward — excess gives chemical aftertaste' },
     variants: [
-      { label: 'Обычный', description: 'Стандартный разрыхлитель.', quantity: '½ ч.л.' },
+      { label: 'Regular', description: 'Standard baking powder.', quantity: '½ tsp' },
     ],
     substitutions: [
-      { name: 'Сода + кислота', description: '¼ ч.л. соды + ½ ч.л. лимонного сока.', note: 'Активируется сразу' },
-      { name: 'Пропуск', description: 'Фалафель будет плотнее, но не критично.', note: 'Текстура плотнее' },
+      { name: 'Baking soda + acid', description: '¼ tsp baking soda + ½ tsp lemon juice.', note: 'Activates immediately' },
+      { name: 'Skip', description: 'Falafel will be denser, but not critical.', note: 'Denser texture' },
     ],
     empirical: false,
     matrix: [
-      { verdict: '✓ Ок', consequence: 'Без разрыхлителя. Фалафель немного плотнее.' },
-      { verdict: 'Слабо', consequence: 'Минимальный эффект подъёма.' },
-      { verdict: '✓ Лёгкий', consequence: 'Едва заметная воздушность.' },
-      { verdict: '✓ Норма', consequence: 'Правильная воздушность.' },
-      { verdict: 'Привкус', consequence: 'Химический привкус начинает появляться.' },
-      { verdict: 'Мыльный вкус', consequence: 'Явный химический привкус. Блюдо испорчено.' },
+      { verdict: '✓ OK', consequence: 'Without baking powder. Falafel slightly denser.' },
+      { verdict: 'Weak', consequence: 'Minimal lift effect.' },
+      { verdict: '✓ Light', consequence: 'Barely noticeable airiness.' },
+      { verdict: '✓ Normal', consequence: 'Proper airiness.' },
+      { verdict: 'Aftertaste', consequence: 'Chemical aftertaste begins to appear.' },
+      { verdict: 'Soapy taste', consequence: 'Clear chemical aftertaste. Dish ruined.' },
     ],
   },
   {
-    name: 'Мука',
-    role: 'Связующее — только если смесь слишком влажная',
-    necessity: 'УСЛОВНЫЙ',
-    amount: '? 0–3 ст.л.',
-    toleranceZone: { type: 'narrow_above', description: 'Эмпирически. Ниже нормы — N/A; выше — УЗКИЙ, каждая ложка меняет текстуру' },
+    name: 'Flour',
+    role: 'Binder — only if mixture is too wet',
+    necessity: 'CONDITIONAL',
+    amount: '? 0–3 tbsp',
+    toleranceZone: { type: 'narrow_above', description: 'Empirical. Below normal — N/A; above — NARROW, each spoonful changes texture' },
     variants: [
-      { label: 'Пшеничная', description: 'Стандарт. Каждая столовая ложка существенно меняет текстуру.', quantity: '? 0–3 ст.л.' },
-      { label: 'Нутовая мука', description: 'Усиливает вкусовую связность. Более гигроскопична.', quantity: '? 0–3 ст.л.' },
-      { label: 'Кукурузный крахмал', description: 'Связывает плотнее при меньшем объёме.', quantity: '? 0–1½ ст.л.' },
+      { label: 'Wheat', description: 'Standard. Each tablespoon significantly changes texture.', quantity: '? 0–3 tbsp' },
+      { label: 'Chickpea flour', description: 'Enhances flavor cohesion. More hygroscopic.', quantity: '? 0–3 tbsp' },
+      { label: 'Corn starch', description: 'Binds tighter with less volume.', quantity: '? 0–1½ tbsp' },
     ],
     substitutions: [
-      { name: 'Нутовая мука', description: 'Та же роль, тот же диапазон. Без глютена.', note: 'Начать с ½ от количества пшеничной' },
-      { name: 'Кукурузный крахмал', description: 'Связывает плотнее с меньшим объёмом.', note: '½ от количества муки' },
-      { name: 'Пропуск', description: 'Правильный ответ если техника верна. Всегда пробуйте ноль муки сначала.', note: 'Идеальный фалафель без муки' },
+      { name: 'Chickpea flour', description: 'Same role, same range. Gluten-free.', note: 'Start with ½ the wheat flour amount' },
+      { name: 'Corn starch', description: 'Binds tighter with less volume.', note: '½ the flour amount' },
+      { name: 'Skip', description: 'The right answer if technique is correct. Always try zero flour first.', note: 'Perfect falafel without flour' },
     ],
     empirical: true,
     matrix: [
-      { verdict: 'Идеально', consequence: 'Правильная техника — мука не нужна.' },
-      { verdict: 'Рыхло', consequence: 'Смесь слегка рассыпается при жарке.' },
-      { verdict: 'Держится', consequence: 'Минимальное связывание.' },
-      { verdict: '✓? Связано', consequence: 'Эмпирически — проверьте тест-шариком.' },
-      { verdict: 'Плотно', consequence: 'Заметно плотнее текстура.' },
-      { verdict: 'Кирпич', consequence: 'Тяжёлый, плотный фалафель. Потеря воздушности.' },
+      { verdict: 'Perfect', consequence: 'Proper technique — no flour needed.' },
+      { verdict: 'Crumbly', consequence: 'Mix slightly falls apart when frying.' },
+      { verdict: 'Holds', consequence: 'Minimal binding.' },
+      { verdict: '✓? Bound', consequence: 'Empirical — test with a sample ball.' },
+      { verdict: 'Dense', consequence: 'Noticeably denser texture.' },
+      { verdict: 'Brick', consequence: 'Heavy, dense falafel. Loss of airiness.' },
     ],
   },
 ];
 
 // ═══════════════════════════════════════════════════════════════
-// STEPS — hardcoded representative recipe (фалафель)
+// STEPS — hardcoded representative recipe (falafel)
 // ═══════════════════════════════════════════════════════════════
 
 const STEPS = [
   {
     id: 1,
-    title: 'Замачивание нута',
-    description: 'Замочить сухой нут в большом объёме холодной воды. Нут должен быть полностью покрыт водой с запасом 5 см сверху.',
-    duration: { value: '12–24 ч', accuracy: 'verified' },
+    title: 'Soaking Chickpeas',
+    description: 'Soak dry chickpeas in a large volume of cold water. Chickpeas must be fully submerged with 5 cm of water above.',
+    duration: { value: '12–24 h', accuracy: 'verified' },
     temperature: null,
     equipment: null,
     equipmentSetting: null,
-    doneWhen: 'Нут увеличился в 2–2.5 раза, стал мягким при раскусывании, но не кашеобразным. Вода слегка мутная.',
-    ifSkipped: 'Сухой нут невозможно измельчить до нужной консистенции — фалафель развалится. Консервированный нут не замена — он варёный и даст кашу.',
+    doneWhen: 'Chickpeas have doubled to 2.5× in size, soft when bitten but not mushy. Water is slightly cloudy.',
+    ifSkipped: 'Dry chickpeas cannot be ground to the right consistency — falafel will fall apart. Canned chickpeas are not a substitute — they are cooked and will turn to mush.',
     calibration: null,
   },
   {
     id: 2,
-    title: 'Слив и просушка нута',
-    description: 'Слить воду через дуршлаг. Дать стечь 5–10 минут. Нут должен быть влажным, но не мокрым.',
-    duration: { value: '5–10 мин', accuracy: 'verified' },
+    title: 'Draining and Drying Chickpeas',
+    description: 'Drain water through a colander. Let drip for 5–10 minutes. Chickpeas should be damp but not wet.',
+    duration: { value: '5–10 min', accuracy: 'verified' },
     temperature: null,
     equipment: null,
     equipmentSetting: null,
-    doneWhen: 'С поверхности нута не капает вода. При встряхивании дуршлага капли не разлетаются.',
-    ifSkipped: 'Лишняя влага → смесь слишком мокрая → потребуется больше муки → плотный фалафель.',
+    doneWhen: 'No water drips from the surface of the chickpeas. When shaking the colander, no droplets scatter.',
+    ifSkipped: 'Excess moisture → mix too wet → more flour needed → dense falafel.',
     calibration: null,
   },
   {
     id: 3,
-    title: 'Измельчение в комбайне',
-    description: 'Измельчить нут, лук, чеснок и петрушку в чаше комбайна импульсным режимом до мелкой крупки. НЕ пюрировать — текстура должна быть зернистой.',
-    duration: { value: '30–45 сек', accuracy: 'estimated' },
+    title: 'Processing in Food Processor',
+    description: 'Pulse chickpeas, onion, garlic, and parsley in the food processor bowl until fine grit. Do NOT purée — texture must be grainy.',
+    duration: { value: '30–45 sec', accuracy: 'estimated' },
     temperature: null,
     equipment: 'KenwoodFDP22',
-    equipmentSetting: 'Chop (импульсный)',
-    doneWhen: 'Консистенция мелкого кускуса — крупинки 1–2 мм. При сжатии в руке смесь держит форму, но не липкая. НЕ паста.',
-    ifSkipped: 'Слишком крупный помол → фалафель разваливается. Слишком мелкий (пюре) → плотная, резиновая текстура.',
+    equipmentSetting: 'Chop (pulse)',
+    doneWhen: 'Consistency of fine couscous — grains 1–2 mm. When squeezed in hand, mix holds shape but is not sticky. NOT a paste.',
+    ifSkipped: 'Too coarse a grind → falafel falls apart. Too fine (purée) → dense, rubbery texture.',
     calibration: null,
   },
   {
     id: 4,
-    title: 'Добавление специй и соли',
-    description: 'Добавить кумин, кориандр, соль, перец, разрыхлитель в измельчённую смесь. Перемешать лопаткой до равномерного распределения.',
-    duration: { value: '1–2 мин', accuracy: 'verified' },
+    title: 'Adding Spices and Salt',
+    description: 'Add cumin, coriander, salt, pepper, and baking powder to the ground mixture. Mix with a spatula until evenly distributed.',
+    duration: { value: '1–2 min', accuracy: 'verified' },
     temperature: null,
     equipment: null,
     equipmentSetting: null,
-    doneWhen: 'Специи равномерно распределены — нет видимых скоплений кумина или соли.',
-    ifSkipped: 'Специи распределятся неравномерно — одни фалафели будут пресными, другие пересоленными.',
+    doneWhen: 'Spices are evenly distributed — no visible clumps of cumin or salt.',
+    ifSkipped: 'Spices will be unevenly distributed — some falafels will be bland, others oversalted.',
     calibration: null,
   },
   {
     id: 5,
-    title: 'Тест на влажность',
-    description: 'Слепить один шарик (~30 g). Если держит форму и не трескается — мука не нужна. Если разваливается — добавить муку по 1 ст.л. и повторить тест.',
-    duration: { value: '2–3 мин', accuracy: 'empirical' },
+    title: 'Moisture Test',
+    description: 'Shape one ball (~30 g). If it holds shape and does not crack — no flour needed. If it falls apart — add flour 1 tbsp at a time and repeat test.',
+    duration: { value: '2–3 min', accuracy: 'empirical' },
     temperature: null,
     equipment: null,
     equipmentSetting: null,
-    doneWhen: 'Шарик держит форму, поверхность гладкая, без трещин. При лёгком нажатии пружинит.',
-    ifSkipped: 'Пропуск теста → риск что вся партия развалится при жарке. Исправлять поздно.',
+    doneWhen: 'Ball holds shape, surface is smooth, no cracks. Springs back when lightly pressed.',
+    ifSkipped: 'Skipping the test → risk of entire batch falling apart when frying. Too late to fix.',
     calibration: null,
   },
   {
     id: 6,
-    title: 'Формовка фалафелей',
-    description: 'Слепить шарики ~30 g каждый. Выложить на тарелку или доску. Не сдавливать слишком сильно.',
-    duration: { value: '10–15 мин', accuracy: 'estimated' },
+    title: 'Shaping Falafels',
+    description: 'Shape balls ~30 g each. Place on a plate or board. Do not squeeze too hard.',
+    duration: { value: '10–15 min', accuracy: 'estimated' },
     temperature: null,
     equipment: null,
     equipmentSetting: null,
-    doneWhen: 'Все шарики одинакового размера (~3–4 см диаметр). Поверхность гладкая. 12–14 штук из стандартной порции.',
-    ifSkipped: 'Разный размер → неравномерное приготовление. Мелкие сгорят, крупные останутся сырыми.',
+    doneWhen: 'All balls are the same size (~3–4 cm diameter). Surface is smooth. 12–14 pieces from a standard batch.',
+    ifSkipped: 'Different sizes → uneven cooking. Small ones will burn, large ones will stay raw.',
     calibration: null,
   },
   {
     id: 7,
-    title: 'Разогрев аэрофритюрницы',
-    description: 'Разогреть Ninja MAX PRO в режиме Air Fry до 200 °C.',
-    duration: { value: '3–5 мин', accuracy: 'verified' },
+    title: 'Preheating Air Fryer',
+    description: 'Preheat Ninja MAX PRO in Air Fry mode to 200 °C.',
+    duration: { value: '3–5 min', accuracy: 'verified' },
     temperature: { value: '200 °C', accuracy: 'verified' },
     equipment: 'NinjaMAXPRO',
     equipmentSetting: 'Air Fry',
-    doneWhen: 'Индикатор готовности на Ninja показывает достижение 200 °C.',
-    ifSkipped: 'Фалафель попадёт в холодную среду → впитает больше масла (из спрея) → жирный, не хрустящий.',
-    calibration: '⚡ Калибровка: проверьте первую партию — время зависит от размера шариков и влажности смеси. Запишите своё оптимальное время.',
+    doneWhen: 'Ready indicator on Ninja shows 200 °C reached.',
+    ifSkipped: 'Falafel will go into a cold environment → absorb more oil (from spray) → greasy, not crispy.',
+    calibration: '⚡ Calibration: check the first batch — time depends on ball size and mix moisture. Record your optimal time.',
   },
   {
     id: 8,
-    title: 'Жарка фалафеля (первая сторона)',
-    description: 'Слегка сбрызнуть фалафели масляным спреем. Выложить в один слой в корзину аэрофритюрницы. Жарить 12–14 минут при 200 °C.',
-    duration: { value: '12–14 мин', accuracy: 'estimated' },
+    title: 'Frying Falafel (First Side)',
+    description: 'Lightly spray falafels with oil spray. Place in a single layer in the air fryer basket. Fry for 12–14 minutes at 200 °C.',
+    duration: { value: '12–14 min', accuracy: 'estimated' },
     temperature: { value: '200 °C', accuracy: 'verified' },
     equipment: 'NinjaMAXPRO',
     equipmentSetting: 'Air Fry',
-    doneWhen: 'Верхняя сторона золотисто-коричневая. Края начинают темнеть. При постукивании — глухой звук.',
-    ifSkipped: 'Фалафель останется сырым внутри. Поверхность бледная, не хрустящая.',
-    calibration: '⚡ Калибровка: проверьте первую партию — время зависит от размера шариков и влажности смеси. Запишите своё оптимальное время.',
+    doneWhen: 'Top side is golden-brown. Edges are starting to darken. When tapped — a dull sound.',
+    ifSkipped: 'Falafel will stay raw inside. Surface is pale, not crispy.',
+    calibration: '⚡ Calibration: check the first batch — time depends on ball size and mix moisture. Record your optimal time.',
   },
   {
     id: 9,
-    title: 'Переворот и дожарка',
-    description: 'Аккуратно перевернуть каждый фалафель лопаткой. Жарить ещё 5–7 минут при 200 °C.',
-    duration: { value: '5–7 мин', accuracy: 'estimated' },
+    title: 'Flip and Finish Frying',
+    description: 'Carefully flip each falafel with a spatula. Fry for another 5–7 minutes at 200 °C.',
+    duration: { value: '5–7 min', accuracy: 'estimated' },
     temperature: { value: '200 °C', accuracy: 'verified' },
     equipment: 'NinjaMAXPRO',
     equipmentSetting: 'Air Fry',
-    doneWhen: 'Обе стороны равномерно золотисто-коричневые. Корка хрустящая при постукивании ногтем. При разламывании — внутри светло-зелёный, паровой.',
-    ifSkipped: 'Одна сторона бледная и мягкая. Неравномерная текстура.',
-    calibration: '⚡ Калибровка: проверьте первую партию — время зависит от размера шариков и влажности смеси. Запишите своё оптимальное время.',
+    doneWhen: 'Both sides evenly golden-brown. Crust is crispy when tapped with a fingernail. When broken open — inside is light green, steamy.',
+    ifSkipped: 'One side is pale and soft. Uneven texture.',
+    calibration: '⚡ Calibration: check the first batch — time depends on ball size and mix moisture. Record your optimal time.',
   },
   {
     id: 10,
-    title: 'Отдых перед подачей',
-    description: 'Выложить готовые фалафели на решётку (не на тарелку — низ отмокнет). Дать отдохнуть 2–3 минуты.',
-    duration: { value: '2–3 мин', accuracy: 'verified' },
+    title: 'Resting Before Serving',
+    description: 'Place finished falafels on a wire rack (not a plate — the bottom will get soggy). Let rest for 2–3 minutes.',
+    duration: { value: '2–3 min', accuracy: 'verified' },
     temperature: null,
     equipment: null,
     equipmentSetting: null,
-    doneWhen: 'Фалафель перестал шипеть. Корка стабилизировалась — стала ещё хрустящее.',
-    ifSkipped: 'Сразу с пылу — можно обжечься. Корка ещё не стабилизировалась, при разрезании может развалиться.',
+    doneWhen: 'Falafel has stopped sizzling. Crust has stabilized — became even crispier.',
+    ifSkipped: 'Straight from the heat — you can burn yourself. Crust hasn\'t stabilized yet, may fall apart when cut.',
     calibration: null,
   },
 ];
@@ -667,10 +664,10 @@ const ACCURACY_RULES = [
     severity: 'error',
     check(step) {
       if (step.duration && !step.duration.accuracy) {
-        return { pass: false, message: `Шаг ${step.id}: duration ("${step.duration.value}") — отсутствует accuracy` };
+        return { pass: false, message: `Step ${step.id}: duration ("${step.duration.value}") — missing accuracy` };
       }
       if (step.temperature && !step.temperature.accuracy) {
-        return { pass: false, message: `Шаг ${step.id}: temperature ("${step.temperature.value}") — отсутствует accuracy` };
+        return { pass: false, message: `Step ${step.id}: temperature ("${step.temperature.value}") — missing accuracy` };
       }
       return { pass: true };
     },
@@ -690,7 +687,7 @@ const ACCURACY_RULES = [
       if (step.duration && step.duration.accuracy === 'estimated') estimatedFields.push('duration');
       if (step.temperature && step.temperature.accuracy === 'estimated') estimatedFields.push('temperature');
       if (estimatedFields.length > 0 && !step.duration && !step.temperature) {
-        return { pass: false, message: `Шаг ${step.id}: accuracy "estimated" но нет ни duration, ни temperature для отображения ~` };
+        return { pass: false, message: `Step ${step.id}: accuracy "estimated" but no duration or temperature to display ~` };
       }
       return { pass: true };
     },
@@ -709,7 +706,7 @@ const ACCURACY_RULES = [
       if (step.duration && step.duration.accuracy === 'empirical') empiricalFields.push('duration');
       if (step.temperature && step.temperature.accuracy === 'empirical') empiricalFields.push('temperature');
       if (empiricalFields.length > 0 && !step.duration && !step.temperature) {
-        return { pass: false, message: `Шаг ${step.id}: accuracy "empirical" но нет ни duration, ни temperature для отображения ?` };
+        return { pass: false, message: `Step ${step.id}: accuracy "empirical" but no duration or temperature to display ?` };
       }
       return { pass: true };
     },
@@ -739,12 +736,12 @@ const ACCURACY_RULES = [
     check(step) {
       if (step.temperature && step.temperature.value) {
         if (!step.equipment) {
-          return { pass: false, message: `Шаг ${step.id}: указана температура "${step.temperature.value}" но equipment не задан` };
+          return { pass: false, message: `Step ${step.id}: temperature "${step.temperature.value}" specified but equipment not set` };
         }
         // Check equipment exists in profile store
         const eq = EquipmentProfiles.getById(step.equipment);
         if (!eq) {
-          return { pass: false, message: `Шаг ${step.id}: equipment "${step.equipment}" не найден в профилях оборудования` };
+          return { pass: false, message: `Step ${step.id}: equipment "${step.equipment}" not found in equipment profiles` };
         }
       }
       return { pass: true };
@@ -767,7 +764,7 @@ const ACCURACY_RULES = [
       if (!eq) return { pass: true }; // missing equipment caught by R5
       if (eq.type === 'airfryer') {
         if (!step.calibration) {
-          return { pass: false, message: `Шаг ${step.id}: estimated accuracy + air fryer (${eq.name}) — calibration обязателен, но отсутствует` };
+          return { pass: false, message: `Step ${step.id}: estimated accuracy + air fryer (${eq.name}) — calibration required but missing` };
         }
       }
       return { pass: true };
@@ -783,7 +780,7 @@ const ACCURACY_RULES = [
     severity: 'error',
     check(step) {
       if (!step.doneWhen || step.doneWhen.trim().length === 0) {
-        return { pass: false, message: `Шаг ${step.id}: поле doneWhen обязательно, но пустое` };
+        return { pass: false, message: `Step ${step.id}: doneWhen field is required but empty` };
       }
       return { pass: true };
     },
@@ -798,7 +795,7 @@ const ACCURACY_RULES = [
     severity: 'error',
     check(step) {
       if (!step.ifSkipped || step.ifSkipped.trim().length === 0) {
-        return { pass: false, message: `Шаг ${step.id}: поле ifSkipped обязательно, но пустое` };
+        return { pass: false, message: `Step ${step.id}: ifSkipped field is required but empty` };
       }
       return { pass: true };
     },
@@ -824,7 +821,7 @@ const ACCURACY_RULES = [
       const wrongPattern = /1\.5\s*L/gi;
       for (const text of textFields) {
         if (wrongPattern.test(text)) {
-          return { pass: false, message: `Шаг ${step.id}: найдено "1.5 L" вместо "${expected}" для Kenwood FDP22` };
+          return { pass: false, message: `Step ${step.id}: found "1.5 L" instead of "${expected}" for Kenwood FDP22` };
         }
       }
       return { pass: true };
@@ -988,7 +985,7 @@ const PRINT_CSS = `
 
   /* ── Print header via body::before ── */
   body::before {
-    content: "Cooking Visualizer — Разбор рецепта" !important;
+    content: "Cooking Visualizer — Recipe Breakdown" !important;
     display: block !important;
     font-family: Georgia, serif !important;
     font-size: 18pt !important;
@@ -1065,20 +1062,20 @@ class ErrorBoundary extends React.Component {
             fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: '1.3rem',
             margin: '0 0 12px 0',
           }}>
-            Что-то пошло не так
+            Something went wrong
           </h2>
           <p style={{
             fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.9rem',
             margin: '0 0 24px 0', lineHeight: '1.5',
           }}>
-            Произошла ошибка при отображении. Попробуйте обновить страницу.
+            An error occurred while rendering. Please try refreshing the page.
           </p>
           <button onClick={() => window.location.reload()} style={{
             padding: '10px 28px', borderRadius: '8px', border: 'none',
             backgroundColor: THEME.gold, color: THEME.bg, cursor: 'pointer',
             fontFamily: 'Georgia, serif', fontSize: '1rem', fontWeight: 'bold',
           }}>
-            Обновить
+            Refresh
           </button>
         </div>
       );
@@ -1094,8 +1091,8 @@ class ErrorBoundary extends React.Component {
 function AccuracyTag({ accuracy }) {
   if (!accuracy || accuracy === 'verified') return null;
   const config = {
-    estimated: { icon: '~', label: 'Оценка', color: THEME.amber, title: 'Оценка; зависит от размера, влажности и т.д.' },
-    empirical: { icon: '?', label: 'Проверка', color: THEME.red, title: 'Требует проверки пользователем' },
+    estimated: { icon: '~', label: 'Estimate', color: THEME.amber, title: 'Estimate; depends on size, moisture, etc.' },
+    empirical: { icon: '?', label: 'Check', color: THEME.red, title: 'Requires user verification' },
   };
   const c = config[accuracy];
   if (!c) return null;
@@ -1125,8 +1122,8 @@ const TabBar = memo(function TabBar({ activeTab, onTabChange }) {
   const { breakpoint } = useWindowWidth();
   const isMobile = breakpoint === 'mobile';
   const tabs = [
-    { id: 'ingredients', label: 'Ингредиенты' },
-    { id: 'steps', label: 'Этапы приготовления' },
+    { id: 'ingredients', label: 'Ingredients' },
+    { id: 'steps', label: 'Cooking Steps' },
   ];
   return (
     <div style={{ display: 'flex', borderBottom: `2px solid ${THEME.border}`, marginBottom: isMobile ? '12px' : '20px' }}>
@@ -1191,7 +1188,7 @@ const IngredientCard = memo(function IngredientCard({ ing, index, isExpanded, is
         backgroundColor: 'transparent', color: THEME.goldDim, cursor: 'pointer',
         fontSize: '0.75rem', fontFamily: 'Georgia, serif', marginBottom: isExpanded ? '12px' : '0',
       }}>
-        {isExpanded ? 'Свернуть матрицу ▲' : 'Развернуть матрицу ▼'}
+        {isExpanded ? 'Collapse matrix ▲' : 'Expand matrix ▼'}
       </button>
       <div style={{
         maxHeight: isExpanded ? '2000px' : '0px',
@@ -1226,7 +1223,7 @@ const IngredientCard = memo(function IngredientCard({ ing, index, isExpanded, is
           {/* Tolerance zone bar */}
           <div style={{ marginBottom: '12px' }}>
             <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.7rem', color: THEME.textMuted, marginBottom: '4px' }}>
-              Зона допуска: {ing.toleranceZone.description}
+              Tolerance zone: {ing.toleranceZone.description}
             </div>
             <div style={{ display: 'flex', height: '6px', borderRadius: '3px', overflow: 'hidden', backgroundColor: THEME.border }}>
               {(() => {
@@ -1250,7 +1247,7 @@ const IngredientCard = memo(function IngredientCard({ ing, index, isExpanded, is
           {ing.variants.length > 0 && (
             <div style={{ marginBottom: '10px' }}>
               <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.75rem', color: THEME.goldDim, fontWeight: 'bold', marginBottom: '4px' }}>
-                Варианты формы:
+                Form Variants:
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                 {ing.variants.map((v, vi) => (
@@ -1268,13 +1265,13 @@ const IngredientCard = memo(function IngredientCard({ ing, index, isExpanded, is
           {ing.substitutions.length > 0 && (
             <div>
               <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.75rem', color: THEME.goldDim, fontWeight: 'bold', marginBottom: '4px' }}>
-                Варианты и замены:
+                Substitutes & Alternatives:
               </div>
               {ing.substitutions.map((sub, si) => (
                 <div key={si} style={{
                   padding: '8px 10px', marginBottom: '4px',
                   backgroundColor: THEME.surface, borderRadius: '4px',
-                  borderLeft: `3px solid ${sub.name === 'Пропуск' ? THEME.amber : THEME.green}`,
+                  borderLeft: `3px solid ${sub.name === 'Skip' ? THEME.amber : THEME.green}`,
                 }}>
                   <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.8rem', color: THEME.text, fontWeight: 'bold' }}>
                     {sub.name}
@@ -1300,10 +1297,10 @@ const IngredientCard = memo(function IngredientCard({ ing, index, isExpanded, is
 // ═══════════════════════════════════════════════════════════════
 
 const NECESSITY_COLORS = {
-  'ОСНОВА': THEME.gold,
-  'ВАЖНО': THEME.amber,
-  'ОПЦИОНАЛЬНО': THEME.blue,
-  'УСЛОВНЫЙ': THEME.textDim,
+  'BASE': THEME.gold,
+  'IMPORTANT': THEME.amber,
+  'OPTIONAL': THEME.blue,
+  'CONDITIONAL': THEME.textDim,
 };
 
 function IngredientPanel() {
@@ -1339,14 +1336,14 @@ function IngredientPanel() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <h2 style={{ fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: h2Size, margin: 0 }}>
-          Ингредиенты
+          Ingredients
         </h2>
         <button onClick={toggleAll} style={{
           padding: '6px 14px', borderRadius: '6px', border: `1px solid ${THEME.border}`,
           backgroundColor: THEME.surface, color: THEME.textDim, cursor: 'pointer',
           fontSize: '0.8rem', fontFamily: 'Georgia, serif',
         }}>
-          {expandedAll ? 'Свернуть все' : 'Развернуть все'}
+          {expandedAll ? 'Collapse all' : 'Expand all'}
         </button>
       </div>
 
@@ -1359,7 +1356,7 @@ function IngredientPanel() {
             fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.95rem',
             margin: 0,
           }}>
-            Нет данных об ингредиентах
+            No ingredient data
           </p>
         </div>
       ) : (
@@ -1424,7 +1421,7 @@ const StepCard = memo(function StepCard({ step, index, isExpanded, cardPad, isMo
         {eq && (
           <span
             style={{ ...STYLES.chip, cursor: 'pointer' }}
-            title={`${eq.name} · ${step.equipmentSetting} — нажмите для настроек оборудования`}
+            title={`${eq.name} · ${step.equipmentSetting} — click for equipment settings`}
             onClick={onOpenSettings}
           >
             {eq.icon ? `${eq.icon} ` : ''}{eq.name}{step.equipmentSetting ? ` · ${step.equipmentSetting}` : ''}
@@ -1436,8 +1433,8 @@ const StepCard = memo(function StepCard({ step, index, isExpanded, cardPad, isMo
             padding: '3px 10px', borderRadius: '12px', fontSize: '0.8rem',
             backgroundColor: THEME.red, color: THEME.bg, marginRight: '6px', marginBottom: '4px',
             fontWeight: 'bold',
-          }} title="Это устройство было удалено из профилей">
-            ⚠ Устройство удалено
+          }} title="This device has been removed from profiles">
+            ⚠ Device removed
           </span>
         )}
         {step.duration && (
@@ -1460,7 +1457,7 @@ const StepCard = memo(function StepCard({ step, index, isExpanded, cardPad, isMo
         backgroundColor: 'transparent', color: THEME.goldDim, cursor: 'pointer',
         fontSize: '0.75rem', fontFamily: 'Georgia, serif', marginLeft: '24px',
       }}>
-        {isExpanded ? 'Скрыть детали ▲' : 'Показать детали ▼'}
+        {isExpanded ? 'Hide details ▲' : 'Show details ▼'}
       </button>
 
       <div style={{
@@ -1471,28 +1468,28 @@ const StepCard = memo(function StepCard({ step, index, isExpanded, cardPad, isMo
         transition: reduceMotion ? 'none' : 'max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease',
       }}>
         <div style={{ marginTop: '0px' }}>
-          {/* Готовность */}
+          {/* Doneness */}
           <div style={{
             padding: '10px 14px', marginBottom: '8px',
             borderLeft: `3px solid ${THEME.green}`, backgroundColor: THEME.surface,
             borderRadius: '0 6px 6px 0',
           }}>
             <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.8rem', color: THEME.green, fontWeight: 'bold', marginBottom: '4px' }}>
-              <InlineIcon char="✓" color={THEME.green} /> Готовность
+              <InlineIcon char="✓" color={THEME.green} /> Done When
             </div>
             <div style={{ fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.8rem', lineHeight: '1.4' }}>
               {step.doneWhen}
             </div>
           </div>
 
-          {/* Если пропустить */}
+          {/* If Skipped */}
           <div style={{
             padding: '10px 14px', marginBottom: '8px',
             borderLeft: `3px solid ${THEME.red}`, backgroundColor: THEME.surface,
             borderRadius: '0 6px 6px 0',
           }}>
             <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.8rem', color: THEME.red, fontWeight: 'bold', marginBottom: '4px' }}>
-              <InlineIcon char="✗" color={THEME.red} /> Если пропустить
+              <InlineIcon char="✗" color={THEME.red} /> If Skipped
             </div>
             <div style={{ fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.8rem', lineHeight: '1.4' }}>
               {step.ifSkipped}
@@ -1553,7 +1550,7 @@ const StepCard = memo(function StepCard({ step, index, isExpanded, cardPad, isMo
                 borderRadius: '0 6px 6px 0',
               }}>
                 <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.8rem', color: THEME.blue, fontWeight: 'bold', marginBottom: '8px' }}>
-                  📝 Моя калибровка
+                  📝 My Calibration
                 </div>
 
                 {cal && !isEditing ? (
@@ -1569,7 +1566,7 @@ const StepCard = memo(function StepCard({ step, index, isExpanded, cardPad, isMo
                       </div>
                     )}
                     <div style={{ fontFamily: 'Georgia, serif', color: THEME.textMuted, fontSize: '0.7rem', marginTop: '6px' }}>
-                      Откалибровано: {new Date(cal.calibratedAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      Calibrated: {new Date(cal.calibratedAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </div>
                     <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                       <button onClick={startEdit} style={{
@@ -1577,14 +1574,14 @@ const StepCard = memo(function StepCard({ step, index, isExpanded, cardPad, isMo
                         backgroundColor: THEME.surface, color: THEME.textDim, cursor: 'pointer',
                         fontSize: '0.75rem', fontFamily: 'Georgia, serif',
                       }}>
-                        ✏️ Редактировать
+                        ✏️ Edit
                       </button>
                       <button onClick={handleResetCal} style={{
                         padding: '4px 12px', borderRadius: '4px', border: `1px solid ${THEME.border}`,
                         backgroundColor: 'transparent', color: THEME.red, cursor: 'pointer',
                         fontSize: '0.75rem', fontFamily: 'Georgia, serif',
                       }}>
-                        Сбросить
+                        Reset
                       </button>
                     </div>
                   </div>
@@ -1594,12 +1591,12 @@ const StepCard = memo(function StepCard({ step, index, isExpanded, cardPad, isMo
                     <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '10px', flexWrap: 'wrap', marginBottom: '8px' }}>
                       <div style={{ flex: '1 1 120px' }}>
                         <label style={{ display: 'block', fontFamily: 'Georgia, serif', color: THEME.textMuted, fontSize: '0.7rem', marginBottom: '2px' }}>
-                          ⏱ Опт. время
+                          ⏱ Opt. Time
                         </label>
                         <input
                           value={form.optimalTime}
                           onChange={(e) => updateForm('optimalTime', e.target.value)}
-                          placeholder="12–14 мин"
+                          placeholder="12–14 min"
                           style={{
                             width: '100%', padding: '5px 8px', borderRadius: '4px',
                             border: `1px solid ${THEME.border}`, backgroundColor: THEME.card,
@@ -1610,7 +1607,7 @@ const StepCard = memo(function StepCard({ step, index, isExpanded, cardPad, isMo
                       </div>
                       <div style={{ flex: '1 1 120px' }}>
                         <label style={{ display: 'block', fontFamily: 'Georgia, serif', color: THEME.textMuted, fontSize: '0.7rem', marginBottom: '2px' }}>
-                          🌡 Опт. температура
+                          🌡 Opt. Temp
                         </label>
                         <input
                           value={form.optimalTemp}
@@ -1627,12 +1624,12 @@ const StepCard = memo(function StepCard({ step, index, isExpanded, cardPad, isMo
                     </div>
                     <div style={{ marginBottom: '8px' }}>
                       <label style={{ display: 'block', fontFamily: 'Georgia, serif', color: THEME.textMuted, fontSize: '0.7rem', marginBottom: '2px' }}>
-                        📋 Заметки
+                        📋 Notes
                       </label>
                       <input
                         value={form.notes}
                         onChange={(e) => updateForm('notes', e.target.value)}
-                        placeholder="Первая партия — 12 мин, вторая — 14 мин"
+                        placeholder="First batch — 12 min, second — 14 min"
                         style={{
                           width: '100%', padding: '5px 8px', borderRadius: '4px',
                           border: `1px solid ${THEME.border}`, backgroundColor: THEME.card,
@@ -1647,7 +1644,7 @@ const StepCard = memo(function StepCard({ step, index, isExpanded, cardPad, isMo
                         backgroundColor: THEME.green, color: THEME.bg, cursor: 'pointer',
                         fontSize: '0.8rem', fontFamily: 'Georgia, serif', fontWeight: 'bold',
                       }}>
-                        💾 Сохранить
+                        💾 Save
                       </button>
                       {cal && (
                         <button onClick={() => setEditingCal(prev => ({ ...prev, [calKey]: false }))} style={{
@@ -1655,7 +1652,7 @@ const StepCard = memo(function StepCard({ step, index, isExpanded, cardPad, isMo
                           backgroundColor: THEME.surface, color: THEME.textDim, cursor: 'pointer',
                           fontSize: '0.8rem', fontFamily: 'Georgia, serif',
                         }}>
-                          Отмена
+                          Cancel
                         </button>
                       )}
                     </div>
@@ -1749,7 +1746,7 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <h2 style={{ fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: h2Size, margin: 0 }}>
-            Этапы приготовления
+            Cooking Steps
           </h2>
           {/* Calibration coverage badge */}
           {calCoverageBadge && (
@@ -1766,7 +1763,7 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
               <span style={{ fontSize: '0.85rem' }}>
                 {calCoverageBadge.allDone ? '✅' : '📝'}
               </span>
-              {calCoverageBadge.count}/{calCoverageBadge.total} откалибровано
+              {calCoverageBadge.count}/{calCoverageBadge.total} calibrated
             </span>
           )}
           {/* Verification status badge */}
@@ -1777,14 +1774,14 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
             const badgeColor = hasErrors ? THEME.red : hasWarnings ? THEME.amber : THEME.green;
             const badgeIcon = hasErrors ? '❌' : hasWarnings ? '⚠' : '✅';
             const badgeText = hasErrors
-              ? `${errors.length} ошиб${errors.length === 1 ? 'ка' : errors.length < 5 ? 'ки' : 'ок'}`
+              ? `${errors.length} error${errors.length === 1 ? '' : 's'}`
               : hasWarnings
-                ? `${warnings.length} предупрежд${warnings.length === 1 ? 'ение' : warnings.length < 5 ? 'ения' : 'ений'}`
-                : 'Всё проверено';
+                ? `${warnings.length} warning${warnings.length === 1 ? '' : 's'}`
+                : 'All verified';
             return (
               <button
                 onClick={() => setShowVerificationModal(true)}
-                title="Открыть отчёт проверки точности"
+                title="Open accuracy verification report"
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: '4px',
                   padding: '4px 12px', borderRadius: '16px',
@@ -1812,7 +1809,7 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
           backgroundColor: THEME.surface, color: THEME.textDim, cursor: 'pointer',
           fontSize: '0.8rem', fontFamily: 'Georgia, serif',
         }}>
-          {expandedAll ? 'Свернуть все' : 'Развернуть все'}
+          {expandedAll ? 'Collapse all' : 'Expand all'}
         </button>
       </div>
 
@@ -1822,28 +1819,28 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
         display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center',
       }}>
         <span style={{ fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: '0.85rem', fontWeight: 'bold' }}>
-          ⚠ Точность:
+          ⚠ Accuracy:
         </span>
         <span style={{ fontFamily: 'Georgia, serif', fontSize: '0.75rem', color: THEME.textDim }}>
-          Нет метки = проверено
+          No tag = verified
         </span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontFamily: 'Georgia, serif', fontSize: '0.75rem', color: THEME.textDim }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '16px', height: '16px', borderRadius: '50%', backgroundColor: THEME.amber, color: THEME.bg, fontSize: '0.6rem', fontWeight: 'bold' }}>~</span>
-          = оценка
+          = estimate
         </span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontFamily: 'Georgia, serif', fontSize: '0.75rem', color: THEME.textDim }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '16px', height: '16px', borderRadius: '50%', backgroundColor: THEME.red, color: THEME.bg, fontSize: '0.6rem', fontWeight: 'bold' }}>?</span>
-          = требует проверки
+          = requires verification
         </span>
       </div>
 
-      {/* Важно summary block */}
+      {/* Important summary block */}
       <div style={{
         ...STYLES.card, borderColor: THEME.gold, marginTop: '12px',
         padding: '12px 16px',
       }}>
         <div style={{ fontFamily: 'Georgia, serif', color: THEME.text, fontSize: '0.85rem', lineHeight: '1.5' }}>
-          <strong style={{ color: THEME.goldLight }}>⚠ Важно:</strong> все указанные значения времени и температуры прошли трёхуровневую проверку точности. Значения с меткой ~ являются оценками — откалибруйте под своё оборудование. Значения с меткой ? требуют обязательной проверки.
+          <strong style={{ color: THEME.goldLight }}>⚠ Important:</strong> all time and temperature values have passed three-tier accuracy verification. Values marked with ~ are estimates — calibrate to your equipment. Values marked with ? require mandatory verification.
         </div>
       </div>
 
@@ -1856,7 +1853,7 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
             fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.95rem',
             margin: 0,
           }}>
-            Нет данных о шагах приготовления
+            No cooking steps data
           </p>
         </div>
       ) : (
@@ -1891,7 +1888,7 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
             fontFamily: 'Georgia, serif', fontSize: '0.85rem',
           }}
         >
-          📋 Карта оборудования {showEquipmentMap ? '▲' : '▼'}
+          📋 Equipment Map {showEquipmentMap ? '▲' : '▼'}
         </button>
 
         {showEquipmentMap && (
@@ -1900,13 +1897,13 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
               <thead>
                 <tr style={{ borderBottom: `2px solid ${THEME.goldDim}` }}>
                   <th style={{ textAlign: 'left', padding: '8px 10px', color: THEME.goldLight, fontWeight: 'bold' }}>
-                    Оборудование
+                    Equipment
                   </th>
                   <th style={{ textAlign: 'left', padding: '8px 10px', color: THEME.goldLight, fontWeight: 'bold' }}>
-                    Этапы
+                    Steps
                   </th>
                   <th style={{ textAlign: 'center', padding: '8px 10px', color: THEME.goldLight, fontWeight: 'bold' }}>
-                    Калибровка
+                    Calibration
                   </th>
                 </tr>
               </thead>
@@ -1929,7 +1926,7 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
                   // Rows for each equipment profile present in steps
                   for (const [eqId, steps] of Object.entries(map)) {
                     const profile = profiles.find(p => p.id === eqId);
-                    const eqName = profile ? `${profile.icon || ''} ${profile.name}` : `${eqId} (удалено)`;
+                    const eqName = profile ? `${profile.icon || ''} ${profile.name}` : `${eqId} (removed)`;
                     const calCount = steps.filter(s => CalibrationStore.get(eqId, s.id)).length;
                     const calStatus = calCount === 0 ? '—' : `${calCount}/${steps.length}`;
                     const calColor = calCount === 0 ? THEME.textMuted : calCount === steps.length ? THEME.green : THEME.amber;
@@ -1970,12 +1967,12 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
                     );
                   }
 
-                  // "Все шаги" row for equipment-less steps
+                  // "All Steps" row for equipment-less steps
                   if (noEquipmentSteps.length > 0) {
                     rows.push(
                       <tr key="_noeq" style={{ borderBottom: `1px solid ${THEME.border}`, backgroundColor: THEME.surface }}>
                         <td style={{ padding: '8px 10px', color: THEME.textDim, fontStyle: 'italic', verticalAlign: 'top' }}>
-                          Все шаги
+                          All Steps
                         </td>
                         <td style={{ padding: '8px 10px', verticalAlign: 'top' }}>
                           {noEquipmentSteps.map(s => (
@@ -2033,7 +2030,7 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
             {/* Modal header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 style={{ fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: '1.3rem', margin: 0 }}>
-                📋 Отчёт проверки точности
+                📋 Accuracy Verification Report
               </h2>
               <button onClick={closeModal} style={{
                 background: 'none', border: 'none', color: THEME.textDim, cursor: 'pointer',
@@ -2046,10 +2043,10 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
               display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '20px',
             }}>
               {[
-                { label: 'Шагов', value: verificationReport.totalSteps, color: THEME.goldLight },
-                { label: 'Правил', value: verificationReport.totalRules, color: THEME.blue },
-                { label: 'Проверок', value: verificationReport.checksRun, color: THEME.textDim },
-                { label: 'Пройдено', value: verificationReport.passed, color: THEME.green },
+                { label: 'Steps', value: verificationReport.totalSteps, color: THEME.goldLight },
+                { label: 'Rules', value: verificationReport.totalRules, color: THEME.blue },
+                { label: 'Checks', value: verificationReport.checksRun, color: THEME.textDim },
+                { label: 'Passed', value: verificationReport.passed, color: THEME.green },
               ].map((s, i) => (
                 <div key={i} style={{
                   flex: '1 1 auto', minWidth: '80px', textAlign: 'center',
@@ -2078,10 +2075,10 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
                 verificationReport.warnings.length > 0 ? THEME.amber : THEME.green,
             }}>
               {verificationReport.errors.length > 0
-                ? `❌ Обнаружено ${verificationReport.errors.length} ошиб${verificationReport.errors.length === 1 ? 'ка' : verificationReport.errors.length < 5 ? 'ки' : 'ок'}`
+                ? `❌ Found ${verificationReport.errors.length} error${verificationReport.errors.length === 1 ? '' : 's'}`
                 : verificationReport.warnings.length > 0
-                  ? `⚠ ${verificationReport.warnings.length} предупрежд${verificationReport.warnings.length === 1 ? 'ение' : verificationReport.warnings.length < 5 ? 'ения' : 'ений'}`
-                  : '✅ Все проверки пройдены — данные соответствуют правилам точности'}
+                  ? `⚠ ${verificationReport.warnings.length} warning${verificationReport.warnings.length === 1 ? '' : 's'}`
+                  : '✅ All checks passed — data conforms to accuracy rules'}
             </div>
 
             {/* Errors list */}
@@ -2091,7 +2088,7 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
                   fontFamily: 'Georgia, serif', color: THEME.red, fontSize: '0.95rem',
                   margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '6px',
                 }}>
-                  ❌ Ошибки ({verificationReport.errors.length})
+                  ❌ Errors ({verificationReport.errors.length})
                 </h3>
                 {verificationReport.errors.map((err, i) => (
                   <div key={i} style={{
@@ -2100,7 +2097,7 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
                     borderRadius: '0 6px 6px 0',
                   }}>
                     <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.8rem', color: THEME.text, lineHeight: '1.4' }}>
-                      <span style={{ color: THEME.goldLight, fontWeight: 'bold' }}>Шаг {err.stepId}</span>
+                      <span style={{ color: THEME.goldLight, fontWeight: 'bold' }}>Step {err.stepId}</span>
                       {' — '}{err.stepTitle}
                     </div>
                     <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.75rem', color: THEME.red, marginTop: '2px' }}>
@@ -2118,7 +2115,7 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
                   fontFamily: 'Georgia, serif', color: THEME.amber, fontSize: '0.95rem',
                   margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '6px',
                 }}>
-                  ⚠ Предупреждения ({verificationReport.warnings.length})
+                  ⚠ Warnings ({verificationReport.warnings.length})
                 </h3>
                 {verificationReport.warnings.map((warn, i) => (
                   <div key={i} style={{
@@ -2127,7 +2124,7 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
                     borderRadius: '0 6px 6px 0',
                   }}>
                     <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.8rem', color: THEME.text, lineHeight: '1.4' }}>
-                      <span style={{ color: THEME.goldLight, fontWeight: 'bold' }}>Шаг {warn.stepId}</span>
+                      <span style={{ color: THEME.goldLight, fontWeight: 'bold' }}>Step {warn.stepId}</span>
                       {' — '}{warn.stepTitle}
                     </div>
                     <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.75rem', color: THEME.amber, marginTop: '2px' }}>
@@ -2146,7 +2143,7 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
                     color: THEME.textDim, fontSize: '0.9rem', cursor: 'pointer',
                     padding: '4px 0',
                   }}>
-                    ℹ️ Информация ({verificationReport.infos.length})
+                    ℹ️ Information ({verificationReport.infos.length})
                   </summary>
                   <div style={{ marginTop: '8px' }}>
                     {verificationReport.infos.map((info, i) => (
@@ -2172,7 +2169,7 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
                 backgroundColor: THEME.gold, color: THEME.bg, cursor: 'pointer',
                 fontFamily: 'Georgia, serif', fontSize: '0.9rem', fontWeight: 'bold',
               }}>
-                Закрыть
+                Close
               </button>
             </div>
           </div>
@@ -2187,12 +2184,12 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
 // ═══════════════════════════════════════════════════════════════
 
 const EQUIPMENT_TYPES = [
-  { value: 'airfryer', label: 'Аэрофритюрница', icon: '🔥' },
-  { value: 'processor', label: 'Кухонный комбайн', icon: '🍴' },
-  { value: 'breadmaker', label: 'Хлебопечка', icon: '🍞' },
-  { value: 'sandwichmaker', label: 'Сэндвичница', icon: '🥪' },
-  { value: 'blender', label: 'Блендер', icon: '🥤' },
-  { value: 'custom', label: 'Другое', icon: '⚙️' },
+  { value: 'airfryer', label: 'Air Fryer', icon: '🔥' },
+  { value: 'processor', label: 'Food Processor', icon: '🍴' },
+  { value: 'breadmaker', label: 'Bread Maker', icon: '🍞' },
+  { value: 'sandwichmaker', label: 'Sandwich Maker', icon: '🥪' },
+  { value: 'blender', label: 'Blender', icon: '🥤' },
+  { value: 'custom', label: 'Other', icon: '⚙️' },
 ];
 
 function EquipmentSettingsPanel({ onClose }) {
@@ -2242,8 +2239,8 @@ function EquipmentSettingsPanel({ onClose }) {
 
   const handleSubmit = () => {
     const name = form.name.trim();
-    if (!name) { setFormError('Название обязательно'); return; }
-    if (!form.type) { setFormError('Выберите тип устройства'); return; }
+    if (!name) { setFormError('Name is required'); return; }
+    if (!form.type) { setFormError('Select device type'); return; }
 
     const profileData = {
       name,
@@ -2289,7 +2286,7 @@ function EquipmentSettingsPanel({ onClose }) {
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h2 style={{ fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: '1.3rem', margin: 0 }}>
-            ⚙️ Оборудование
+            ⚙️ Equipment
           </h2>
           <button onClick={doClose} style={{
             background: 'none', border: 'none', color: THEME.textDim, cursor: 'pointer',
@@ -2304,7 +2301,7 @@ function EquipmentSettingsPanel({ onClose }) {
               fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.95rem',
               margin: '0 0 20px 0',
             }}>
-              Нет устройств. Добавьте первое устройство.
+              No devices. Add your first device.
             </p>
             <button onClick={() => { resetForm(); setShowAddForm(true); }} style={{
               padding: '12px 28px', borderRadius: '8px',
@@ -2312,7 +2309,7 @@ function EquipmentSettingsPanel({ onClose }) {
               cursor: 'pointer', fontFamily: 'Georgia, serif',
               fontSize: '1rem', fontWeight: 'bold',
             }}>
-              + Добавить устройство
+              + Add Device
             </button>
           </div>
         ) : (
@@ -2332,31 +2329,31 @@ function EquipmentSettingsPanel({ onClose }) {
                   </span>
                   <span style={STYLES.badge(THEME.goldDim)}>{ti.label}</span>
                   {profile.isDefault && (
-                    <span title="Встроенное устройство — нельзя удалить" style={{ color: THEME.textMuted, fontSize: '0.85rem' }}>🔒</span>
+                    <span title="Built-in device — cannot be deleted" style={{ color: THEME.textMuted, fontSize: '0.85rem' }}>🔒</span>
                   )}
                 </div>
                 <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.75rem', color: THEME.textDim, marginTop: '2px' }}>
-                  {profile.capacity && <span style={{ marginRight: '10px' }}>Объём: {profile.capacity}</span>}
-                  {profile.maxTemp != null && <span style={{ marginRight: '10px' }}>Макс. темп: {profile.maxTemp}°C</span>}
-                  {profile.bowlCapacity && <span style={{ marginRight: '10px' }}>Чаша: {profile.bowlCapacity}</span>}
-                  {(profile.modes || []).length > 0 && <span>Режимы: {(profile.modes || []).join(', ')}</span>}
+                  {profile.capacity && <span style={{ marginRight: '10px' }}>Capacity: {profile.capacity}</span>}
+                  {profile.maxTemp != null && <span style={{ marginRight: '10px' }}>Max temp: {profile.maxTemp}°C</span>}
+                  {profile.bowlCapacity && <span style={{ marginRight: '10px' }}>Bowl: {profile.bowlCapacity}</span>}
+                  {(profile.modes || []).length > 0 && <span>Modes: {(profile.modes || []).join(', ')}</span>}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '12px' }}>
                 <button onClick={() => openEdit(profile)} style={{
                   background: 'none', border: `1px solid ${THEME.border}`, borderRadius: '4px',
                   color: THEME.textDim, cursor: 'pointer', padding: '4px 8px', fontSize: '0.85rem',
-                }} title="Редактировать">✏️</button>
+                }} title="Edit">✏️</button>
                 {profile.isDefault ? (
                   <span style={{
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     width: '30px', height: '30px', color: THEME.textMuted, fontSize: '0.9rem',
-                  }} title="Встроенное устройство — нельзя удалить">🔒</span>
+                  }} title="Built-in device — cannot be deleted">🔒</span>
                 ) : (
                   <button onClick={() => setConfirmDeleteId(profile.id)} style={{
                     background: 'none', border: `1px solid ${THEME.border}`, borderRadius: '4px',
                     color: THEME.red, cursor: 'pointer', padding: '4px 8px', fontSize: '0.85rem',
-                  }} title="Удалить">🗑️</button>
+                  }} title="Delete">🗑️</button>
                 )}
               </div>
             </div>
@@ -2374,19 +2371,19 @@ function EquipmentSettingsPanel({ onClose }) {
               marginTop: '8px', textAlign: 'center',
             }}>
               <p style={{ fontFamily: 'Georgia, serif', color: THEME.text, fontSize: '0.9rem', margin: '0 0 10px 0' }}>
-                Удалить "{p ? p.name : ''}"? Это действие нельзя отменить. Этапы, ссылающиеся на это устройство, покажут предупреждение.
+                Delete "{p ? p.name : ''}"? This action cannot be undone. Steps referencing this device will show a warning.
               </p>
               <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                 <button onClick={() => handleDelete(confirmDeleteId)} style={{
                   padding: '6px 16px', borderRadius: '6px', border: 'none',
                   backgroundColor: THEME.red, color: THEME.bg, cursor: 'pointer',
                   fontFamily: 'Georgia, serif', fontSize: '0.85rem',
-                }}>Удалить</button>
+                }}>Delete</button>
                 <button onClick={() => setConfirmDeleteId(null)} style={{
                   padding: '6px 16px', borderRadius: '6px', border: `1px solid ${THEME.border}`,
                   backgroundColor: THEME.surface, color: THEME.textDim, cursor: 'pointer',
                   fontFamily: 'Georgia, serif', fontSize: '0.85rem',
-                }}>Отмена</button>
+                }}>Cancel</button>
               </div>
             </div>
           );
@@ -2400,12 +2397,12 @@ function EquipmentSettingsPanel({ onClose }) {
             color: THEME.goldDim, cursor: 'pointer', fontFamily: 'Georgia, serif',
             fontSize: '0.9rem', width: '100%',
           }}>
-            + Добавить устройство
+            + Add Device
           </button>
         ) : (
           <div style={{ ...STYLES.card, padding: cardPad, marginTop: '16px', borderColor: THEME.goldDim }}>
             <h3 style={{ fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: '1rem', margin: '0 0 12px 0' }}>
-              {editingId ? 'Редактировать устройство' : 'Новое устройство'}
+              {editingId ? 'Edit Device' : 'New Device'}
             </h3>
             {formError && (
               <div style={{ color: THEME.red, fontSize: '0.8rem', marginBottom: '8px', fontFamily: 'Georgia, serif' }}>
@@ -2416,10 +2413,10 @@ function EquipmentSettingsPanel({ onClose }) {
             {/* Name */}
             <div style={{ marginBottom: '10px' }}>
               <label style={{ display: 'block', fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.8rem', marginBottom: '4px' }}>
-                Название *
+                Name *
               </label>
               <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Например: Моя духовка"
+                placeholder="E.g.: My Oven"
                 style={{
                   width: '100%', padding: '8px 10px', borderRadius: '6px',
                   border: `1px solid ${THEME.border}`, backgroundColor: THEME.surface,
@@ -2431,7 +2428,7 @@ function EquipmentSettingsPanel({ onClose }) {
             {/* Type */}
             <div style={{ marginBottom: '10px' }}>
               <label style={{ display: 'block', fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.8rem', marginBottom: '4px' }}>
-                Тип *
+                Type *
               </label>
               <select value={form.type} onChange={(e) => { const t = EQUIPMENT_TYPES.find(x => x.value === e.target.value); setForm({ ...form, type: e.target.value, icon: t ? t.icon : '⚙️' }); }}
                 style={{
@@ -2449,7 +2446,7 @@ function EquipmentSettingsPanel({ onClose }) {
             {/* Icon */}
             <div style={{ marginBottom: '10px' }}>
               <label style={{ display: 'block', fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.8rem', marginBottom: '4px' }}>
-                Иконка (emoji)
+                Icon (emoji)
               </label>
               <input value={form.icon} onChange={(e) => setForm({ ...form, icon: e.target.value })}
                 placeholder="⚙️"
@@ -2465,7 +2462,7 @@ function EquipmentSettingsPanel({ onClose }) {
             <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
               <div style={{ flex: 1 }}>
                 <label style={{ display: 'block', fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.8rem', marginBottom: '4px' }}>
-                  Объём (L)
+                  Capacity (L)
                 </label>
                 <input value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })}
                   placeholder="6.2 L"
@@ -2478,7 +2475,7 @@ function EquipmentSettingsPanel({ onClose }) {
               </div>
               <div style={{ flex: 1 }}>
                 <label style={{ display: 'block', fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.8rem', marginBottom: '4px' }}>
-                  Объём чаши (L)
+                  Bowl Capacity (L)
                 </label>
                 <input value={form.bowlCapacity} onChange={(e) => setForm({ ...form, bowlCapacity: e.target.value })}
                   placeholder="2.1 L"
@@ -2494,7 +2491,7 @@ function EquipmentSettingsPanel({ onClose }) {
             {/* MaxTemp */}
             <div style={{ marginBottom: '10px' }}>
               <label style={{ display: 'block', fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.8rem', marginBottom: '4px' }}>
-                Макс. температура (°C)
+                Max Temp (°C)
               </label>
               <input value={form.maxTemp} onChange={(e) => setForm({ ...form, maxTemp: e.target.value })}
                 placeholder="240"
@@ -2510,7 +2507,7 @@ function EquipmentSettingsPanel({ onClose }) {
             {/* Modes */}
             <div style={{ marginBottom: '12px' }}>
               <label style={{ display: 'block', fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.8rem', marginBottom: '4px' }}>
-                Режимы (через запятую)
+                Modes (comma separated)
               </label>
               <input value={form.modes} onChange={(e) => setForm({ ...form, modes: e.target.value })}
                 placeholder="Air Fry, Roast, Bake"
@@ -2529,13 +2526,13 @@ function EquipmentSettingsPanel({ onClose }) {
                 backgroundColor: THEME.gold, color: THEME.bg, cursor: 'pointer',
                 fontFamily: 'Georgia, serif', fontSize: '0.9rem', fontWeight: 'bold',
               }}>
-                {editingId ? 'Сохранить' : 'Добавить'}
+                {editingId ? 'Save' : 'Add'}
               </button>
               <button onClick={resetForm} style={{
                 padding: '8px 20px', borderRadius: '6px', border: `1px solid ${THEME.border}`,
                 backgroundColor: THEME.surface, color: THEME.textDim, cursor: 'pointer',
                 fontFamily: 'Georgia, serif', fontSize: '0.9rem',
-              }}>Отмена</button>
+              }}>Cancel</button>
             </div>
           </div>
         )}
@@ -2643,7 +2640,7 @@ function App() {
           </div>
           <button
             onClick={() => setSettingsOpen(true)}
-            title="Настройки оборудования"
+            title="Equipment Settings"
             style={{
               background: 'none', border: `1px solid ${THEME.border}`, borderRadius: '8px',
               color: THEME.textDim, cursor: 'pointer',
