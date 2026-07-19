@@ -1,79 +1,79 @@
-# Cooking Visualizer — интерактивная визуализация рецептов
+# Cooking Visualizer — Interactive Recipe Analysis
 
-Одностраничное React-приложение для детального анализа кулинарных рецептов. Два основных раздела: **панель ингредиентов** с 6-колоночной матрицей количества и **панель этапов приготовления** с трёхуровневой системой точности.
+A single-page React application for detailed cooking recipe analysis. Two main sections: an **ingredient panel** with a 6-column quantity matrix and a **cooking steps panel** with a three-tier accuracy system.
 
-## Возможности
+## Features
 
-### Панель 1 — Анализ ингредиентов
+### Panel 1 — Ingredient Analysis
 
-- **Уровни необходимости**: ОСНОВА, ВАЖНО, ОПЦИОНАЛЬНО, УСЛОВНЫЙ
-- **6-колоночная матрица количества**: 0 | ½× | ¾× | 1× | ⁵⁄₄× | 3/2×
-- **Зоны допуска**: визуальный индикатор ширины допустимого диапазона для каждого ингредиента
-- **Варианты формы**: различные физические формы одного ингредиента с коэффициентами пересчёта
-- **Замены**: альтернативные ингредиенты с оценкой потерь и приобретений
+- **Necessity levels**: BASE, IMPORTANT, OPTIONAL, CONDITIONAL
+- **6-column quantity matrix**: 0 | ½× | ¾× | 1× | ⁵⁄₄× | 3/2×
+- **Tolerance zones**: visual indicator of acceptable range width per ingredient
+- **Form variants**: different physical forms of the same ingredient with conversion ratios
+- **Substitutions**: alternative ingredients with honest assessment of trade-offs
 
-### Панель 2 — Этапы приготовления
+### Panel 2 — Cooking Steps
 
-- **10 шагов** приготовления фалафеля с хронологической структурой
-- **Трёхуровневая система точности**:
-  - ✓ VERIFIED — нет метки: физически или химически установлено, либо из спецификации производителя
-  - ~ ESTIMATED — оценка; зависит от размера, влажности и других переменных
-  - ? EMPIRICAL — требует проверки пользователем в конкретных условиях
-- **Калибровка**: сохранение оптимальных параметров для каждого этапа с аэрофритюрницей
-- **Верификация**: автоматическая проверка 9 правил точности (VIZ-01–VIZ-06)
-- **Карта оборудования**: сводная таблица этапов по устройствам
+- **10 steps** of falafel preparation with chronological structure
+- **Three-tier accuracy system**:
+  - ✓ VERIFIED — no tag: physically or chemically established, or from manufacturer spec
+  - ~ ESTIMATED — depends on size, moisture, and other variables
+  - ? EMPIRICAL — requires user testing under specific conditions
+- **Calibration**: save optimal parameters for each air fryer step
+- **Verification**: automated checking of 9 accuracy rules
+- **Equipment map**: summary table of steps by device
 
-### Профили оборудования
+### Equipment Profiles
 
-- **5 встроенных профилей**: Ninja MAX PRO (аэрофритюрница), Kenwood FDP22.130GY (комбайн, чаша 2.1 L), Panasonic SD-YR2550 (хлебопечка), OZAVO (сэндвичница), Cecotec (блендер)
-- Добавление, редактирование и удаление пользовательских устройств
-- Хранение в localStorage
+- **5 built-in profiles**: Ninja MAX PRO (air fryer), Kenwood FDP22.130GY (food processor, 2.1 L bowl), Panasonic SD-YR2550 (bread maker), OZAVO (sandwich maker), Cecotec (blender)
+- Add, edit, and remove custom devices
+- localStorage persistence
 
-### Дополнительно
+### Additional
 
-- **Адаптивный дизайн**: mobile (≤600px), tablet (≤900px), desktop
-- **Уважение к reduced-motion**: отключение анимаций при `prefers-reduced-motion: reduce`
-- **Стили для печати**: скрытие интерактивных элементов, белый фон
-- **Toast-уведомления**: при повреждении данных localStorage
-- **ErrorBoundary**: защита от белого экрана при ошибках рендеринга
+- **Responsive design**: mobile (≤600px), tablet (≤900px), desktop
+- **Reduced-motion support**: disables animations when `prefers-reduced-motion: reduce`
+- **Print styles**: hide interactive elements, white background
+- **Toast notifications**: on localStorage data corruption
+- **ErrorBoundary**: prevents white screen on render errors
 
-## Архитектура
+## Architecture
 
-- **Один файл**: `src/CookingVisualizer.jsx` (~2650 строк)
-- **Модель данных**: жёстко заданные массивы `INGREDIENTS` (9 позиций) и `STEPS` (10 шагов)
-- **Хранилища localStorage**:
-  - `cookingviz_equipment` — профили оборудования
-  - `cookingviz_calibrations` — записи калибровок (equipmentId::stepId)
-- **Тема**: 14 цветовых токенов в `THEME` (тёплая кухонная палитра)
-- **Стили**: CSS-in-JS через объект `STYLES`
+- **Single file**: `src/CookingVisualizer.jsx` (~2680 lines)
+- **Data model**: hardcoded `INGREDIENTS` (9 entries) and `STEPS` (10 steps) arrays
+- **localStorage stores**:
+  - `cookingviz_equipment` — equipment profiles
+  - `cookingviz_calibrations` — calibration records (equipmentId::stepId)
+- **Theme**: 14 color tokens in `THEME` (warm kitchen palette)
+- **Styles**: CSS-in-JS via `STYLES` object
 
-## Использование
+## Usage
 
-1. Откройте `index.html` в браузере
-2. Переключайтесь между вкладками **Ингредиенты** и **Этапы приготовления**
-3. Разворачивайте карточки ингредиентов для просмотра матрицы и замен
-4. Разворачивайте карточки этапов для деталей и калибровки
-5. Используйте значок ⚙️ для настройки оборудования
-6. Нажмите на индикатор верификации для просмотра отчёта
+1. Open `index.html` in a browser
+2. Switch between **Ingredients** and **Cooking Steps** tabs
+3. Expand ingredient cards to view the matrix and substitutions
+4. Expand step cards for details and calibration
+5. Use the ⚙️ icon to configure equipment
+6. Click the verification indicator to view the audit report
 
-## Требования
+## Requirements
 
-- **Браузер**: любой современный (Chrome, Firefox, Safari, Edge)
-- **React**: загружается через CDN (UMD-сборка)
-- **Зависимости**: нет (только React через скрипт)
-- **Единицы измерения**: только метрические (г, мл, °C)
+- **Browser**: any modern browser (Chrome, Firefox, Safari, Edge)
+- **React**: loaded via CDN (UMD build)
+- **Dependencies**: none (React only via script tag)
+- **Units**: metric only (g, ml, °C)
 
-## Требования визуализатора
+## Visualizer Requirements
 
-| Код | Описание |
-|-----|----------|
-| VIZ-01 | Две панели: ингредиенты и этапы |
-| VIZ-02 | 6-колоночная матрица количества с вердиктами |
-| VIZ-03 | Трёхуровневая система точности (~, ?, без метки) |
-| VIZ-04 | Профили оборудования с калибровкой |
-| VIZ-05 | Верификация 9 правил точности |
-| VIZ-06 | Адаптивный дизайн, печать, reduced-motion |
+| Code | Description |
+|------|-------------|
+| VIZ-01 | Two panels: ingredients and steps |
+| VIZ-02 | 6-column quantity matrix with verdicts |
+| VIZ-03 | Three-tier accuracy system (~, ?, no tag) |
+| VIZ-04 | Equipment profiles with calibration |
+| VIZ-05 | Verification of 9 accuracy rules |
+| VIZ-06 | Responsive design, print, reduced-motion |
 
-## Лицензия
+## License
 
-Внутренний проект. Все права защищены.
+Internal project. All rights reserved.
