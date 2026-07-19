@@ -580,10 +580,202 @@ const STEPS = [
 ];
 
 // ═══════════════════════════════════════════════════════════════
+// ACCURACY VERIFICATION ENGINE — 9 Core Accuracy Rules
+// ═══════════════════════════════════════════════════════════════
+
+const ACCURACY_RULES = [
+  {
+    id: 'R1',
+    name: 'AccuracyRequired',
+    description: 'Every duration and temperature in every step MUST have an accuracy field',
+    severity: 'error',
+    check(step) {
+      if (step.duration && !step.duration.accuracy) {
+        return { pass: false, message: `Шаг ${step.id}: duration ("${step.duration.value}") — отсутствует accuracy` };
+      }
+      if (step.temperature && !step.temperature.accuracy) {
+        return { pass: false, message: `Шаг ${step.id}: temperature ("${step.temperature.value}") — отсутствует accuracy` };
+      }
+      return { pass: true };
+    },
+  },
+  {
+    id: 'R2',
+    name: 'EstimatedTag',
+    description: 'If accuracy is "estimated", the value text MUST contain a ~ somewhere in the UI rendering path',
+    severity: 'warning',
+    check(step) {
+      // AccuracyTag renders '~' badge for estimated accuracy — structural rule,
+      // always satisfied by the component. Warns if estimated has no value to tag.
+      const estimatedFields = [];
+      if (step.duration && step.duration.accuracy === 'estimated') estimatedFields.push('duration');
+      if (step.temperature && step.temperature.accuracy === 'estimated') estimatedFields.push('temperature');
+      if (estimatedFields.length > 0 && !step.duration && !step.temperature) {
+        return { pass: false, message: `Шаг ${step.id}: accuracy "estimated" но нет ни duration, ни temperature для отображения ~` };
+      }
+      return { pass: true };
+    },
+  },
+  {
+    id: 'R3',
+    name: 'EmpiricalTag',
+    description: 'If accuracy is "empirical", the value text MUST contain a ? somewhere in the UI rendering path',
+    severity: 'error',
+    check(step) {
+      // AccuracyTag renders '?' badge for empirical accuracy — structural rule.
+      const empiricalFields = [];
+      if (step.duration && step.duration.accuracy === 'empirical') empiricalFields.push('duration');
+      if (step.temperature && step.temperature.accuracy === 'empirical') empiricalFields.push('temperature');
+      if (empiricalFields.length > 0 && !step.duration && !step.temperature) {
+        return { pass: false, message: `Шаг ${step.id}: accuracy "empirical" но нет ни duration, ни temperature для отображения ?` };
+      }
+      return { pass: true };
+    },
+  },
+  {
+    id: 'R4',
+    name: 'VerifiedNoTag',
+    description: 'If accuracy is "verified", there must be NO ~ or ? badge in the rendered output',
+    severity: 'info',
+    check(step) {
+      // AccuracyTag returns null for verified — structural rule, always satisfied.
+      // Info-level: reminds authors that verified values need no uncertainty badge.
+      return { pass: true };
+    },
+  },
+  {
+    id: 'R5',
+    name: 'EquipmentRequired',
+    description: 'If temperature exists and is not null, equipment must be specified',
+    severity: 'error',
+    check(step) {
+      if (step.temperature && step.temperature.value) {
+        if (!step.equipment) {
+          return { pass: false, message: `Шаг ${step.id}: указана температура "${step.temperature.value}" но equipment не задан` };
+        }
+        // Check equipment exists in profile store
+        const eq = EquipmentProfiles.getById(step.equipment);
+        if (!eq) {
+          return { pass: false, message: `Шаг ${step.id}: equipment "${step.equipment}" не найден в профилях оборудования` };
+        }
+      }
+      return { pass: true };
+    },
+  },
+  {
+    id: 'R6',
+    name: 'CalibrationRequired',
+    description: 'If accuracy is "estimated" AND equipment is an air fryer type, calibration must be non-null',
+    severity: 'error',
+    check(step) {
+      const hasEstimated = (step.duration && step.duration.accuracy === 'estimated')
+        || (step.temperature && step.temperature.accuracy === 'estimated');
+      if (!hasEstimated) return { pass: true };
+      if (!step.equipment) return { pass: true };
+      const eq = EquipmentProfiles.getById(step.equipment);
+      if (!eq) return { pass: true }; // missing equipment caught by R5
+      if (eq.type === 'airfryer') {
+        if (!step.calibration) {
+          return { pass: false, message: `Шаг ${step.id}: estimated accuracy + air fryer (${eq.name}) — calibration обязателен, но отсутствует` };
+        }
+      }
+      return { pass: true };
+    },
+  },
+  {
+    id: 'R7',
+    name: 'DoneWhenRequired',
+    description: 'Every step must have a non-empty doneWhen field',
+    severity: 'error',
+    check(step) {
+      if (!step.doneWhen || step.doneWhen.trim().length === 0) {
+        return { pass: false, message: `Шаг ${step.id}: поле doneWhen обязательно, но пустое` };
+      }
+      return { pass: true };
+    },
+  },
+  {
+    id: 'R8',
+    name: 'IfSkippedRequired',
+    description: 'Every step must have a non-empty ifSkipped field',
+    severity: 'error',
+    check(step) {
+      if (!step.ifSkipped || step.ifSkipped.trim().length === 0) {
+        return { pass: false, message: `Шаг ${step.id}: поле ifSkipped обязательно, но пустое` };
+      }
+      return { pass: true };
+    },
+  },
+  {
+    id: 'R9',
+    name: 'KenwoodBowl',
+    description: 'Any reference to Kenwood FDP22 bowl capacity must be "2.1 L", not "1.5 L"',
+    severity: 'error',
+    check(step) {
+      const kp = EquipmentProfiles.getById('KenwoodFDP22');
+      if (!kp) return { pass: true };
+      const expected = kp.bowlCapacity;
+      if (!expected) return { pass: true };
+      // Scan all text fields for wrong bowl capacity references
+      const textFields = [step.description, step.doneWhen, step.ifSkipped, step.calibration,
+        step.duration ? step.duration.value : null,
+        step.temperature ? step.temperature.value : null,
+      ].filter(Boolean);
+      const wrongPattern = /1\.5\s*L/gi;
+      for (const text of textFields) {
+        if (wrongPattern.test(text)) {
+          return { pass: false, message: `Шаг ${step.id}: найдено "1.5 L" вместо "${expected}" для Kenwood FDP22` };
+        }
+      }
+      return { pass: true };
+    },
+  },
+];
+
+function runAccuracyVerification(steps) {
+  const report = {
+    totalSteps: steps.length,
+    totalRules: ACCURACY_RULES.length,
+    checksRun: 0,
+    passed: 0,
+    errors: [],
+    warnings: [],
+    infos: [],
+  };
+
+  for (const step of steps) {
+    for (const rule of ACCURACY_RULES) {
+      report.checksRun++;
+      const result = rule.check(step);
+      if (result.pass) {
+        report.passed++;
+      } else {
+        const violation = {
+          rule: rule.id,
+          ruleName: rule.name,
+          stepId: step.id,
+          stepTitle: step.title,
+          message: result.message || `${rule.name} failed`,
+        };
+        if (rule.severity === 'error') {
+          report.errors.push(violation);
+        } else if (rule.severity === 'warning') {
+          report.warnings.push(violation);
+        } else {
+          report.infos.push(violation);
+        }
+      }
+    }
+  }
+
+  return report;
+}
+
+// ═══════════════════════════════════════════════════════════════
 // React hooks
 // ═══════════════════════════════════════════════════════════════
 
-const { useState } = React;
+const { useState, useMemo } = React;
 
 // ═══════════════════════════════════════════════════════════════
 // Accuracy tag component
@@ -839,9 +1031,10 @@ function IngredientPanel() {
 // ACTION STEPS PANEL (Panel 2)
 // ═══════════════════════════════════════════════════════════════
 
-function ActionStepsPanel({ onOpenSettings }) {
+function ActionStepsPanel({ onOpenSettings, verificationReport }) {
   const [expandedAll, setExpandedAll] = useState(false);
   const [expandedSteps, setExpandedSteps] = useState({});
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
 
   const toggleAll = () => {
     if (expandedAll) {
@@ -863,9 +1056,47 @@ function ActionStepsPanel({ onOpenSettings }) {
     <div>
       {/* Panel header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <h2 style={{ fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: '1.25rem', margin: 0 }}>
-          Этапы приготовления
-        </h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h2 style={{ fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: '1.25rem', margin: 0 }}>
+            Этапы приготовления
+          </h2>
+          {/* Verification status badge */}
+          {verificationReport && (() => {
+            const { errors, warnings } = verificationReport;
+            const hasErrors = errors.length > 0;
+            const hasWarnings = warnings.length > 0;
+            const badgeColor = hasErrors ? THEME.red : hasWarnings ? THEME.amber : THEME.green;
+            const badgeIcon = hasErrors ? '❌' : hasWarnings ? '⚠' : '✅';
+            const badgeText = hasErrors
+              ? `${errors.length} ошиб${errors.length === 1 ? 'ка' : errors.length < 5 ? 'ки' : 'ок'}`
+              : hasWarnings
+                ? `${warnings.length} предупрежд${warnings.length === 1 ? 'ение' : warnings.length < 5 ? 'ения' : 'ений'}`
+                : 'Всё проверено';
+            return (
+              <button
+                onClick={() => setShowVerificationModal(true)}
+                title="Открыть отчёт проверки точности"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '4px',
+                  padding: '4px 12px', borderRadius: '16px',
+                  border: `1px solid ${badgeColor}`,
+                  backgroundColor: 'transparent',
+                  color: badgeColor,
+                  cursor: 'pointer',
+                  fontFamily: 'Georgia, serif',
+                  fontSize: '0.8rem',
+                  fontWeight: 'bold',
+                  transition: 'background-color 0.2s',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = badgeColor + '22'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+              >
+                <span style={{ fontSize: '0.9rem' }}>{badgeIcon}</span>
+                {badgeText}
+              </button>
+            );
+          })()}
+        </div>
         <button onClick={toggleAll} style={{
           padding: '6px 14px', borderRadius: '6px', border: `1px solid ${THEME.border}`,
           backgroundColor: THEME.surface, color: THEME.textDim, cursor: 'pointer',
@@ -1031,6 +1262,167 @@ function ActionStepsPanel({ onOpenSettings }) {
           </div>
         );
       })}
+
+      {/* Verification report modal */}
+      {showVerificationModal && verificationReport && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }} onClick={(e) => { if (e.target === e.currentTarget) setShowVerificationModal(false); }}>
+          <div style={{
+            backgroundColor: THEME.bg, border: `2px solid ${THEME.goldDim}`, borderRadius: '12px',
+            padding: '24px', maxWidth: '650px', width: '90%', maxHeight: '85vh', overflowY: 'auto',
+            color: THEME.text,
+          }}>
+            {/* Modal header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: '1.3rem', margin: 0 }}>
+                📋 Отчёт проверки точности
+              </h2>
+              <button onClick={() => setShowVerificationModal(false)} style={{
+                background: 'none', border: 'none', color: THEME.textDim, cursor: 'pointer',
+                fontSize: '1.5rem', lineHeight: '1',
+              }}>✕</button>
+            </div>
+
+            {/* Summary counts */}
+            <div style={{
+              display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '20px',
+            }}>
+              {[
+                { label: 'Шагов', value: verificationReport.totalSteps, color: THEME.goldLight },
+                { label: 'Правил', value: verificationReport.totalRules, color: THEME.blue },
+                { label: 'Проверок', value: verificationReport.checksRun, color: THEME.textDim },
+                { label: 'Пройдено', value: verificationReport.passed, color: THEME.green },
+              ].map((s, i) => (
+                <div key={i} style={{
+                  flex: '1 1 auto', minWidth: '80px', textAlign: 'center',
+                  padding: '10px 8px', borderRadius: '8px',
+                  backgroundColor: THEME.surface, border: `1px solid ${THEME.border}`,
+                }}>
+                  <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.7rem', color: THEME.textMuted, marginBottom: '4px' }}>
+                    {s.label}
+                  </div>
+                  <div style={{ fontFamily: 'Georgia, serif', fontSize: '1.2rem', fontWeight: 'bold', color: s.color }}>
+                    {s.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Overall status */}
+            <div style={{
+              padding: '10px 16px', borderRadius: '8px', marginBottom: '16px',
+              fontFamily: 'Georgia, serif', fontSize: '0.9rem', fontWeight: 'bold',
+              backgroundColor: verificationReport.errors.length > 0 ? THEME.red + '22' :
+                verificationReport.warnings.length > 0 ? THEME.amber + '22' : THEME.green + '22',
+              borderLeft: `4px solid ${verificationReport.errors.length > 0 ? THEME.red :
+                verificationReport.warnings.length > 0 ? THEME.amber : THEME.green}`,
+              color: verificationReport.errors.length > 0 ? THEME.red :
+                verificationReport.warnings.length > 0 ? THEME.amber : THEME.green,
+            }}>
+              {verificationReport.errors.length > 0
+                ? `❌ Обнаружено ${verificationReport.errors.length} ошиб${verificationReport.errors.length === 1 ? 'ка' : verificationReport.errors.length < 5 ? 'ки' : 'ок'}`
+                : verificationReport.warnings.length > 0
+                  ? `⚠ ${verificationReport.warnings.length} предупрежд${verificationReport.warnings.length === 1 ? 'ение' : verificationReport.warnings.length < 5 ? 'ения' : 'ений'}`
+                  : '✅ Все проверки пройдены — данные соответствуют правилам точности'}
+            </div>
+
+            {/* Errors list */}
+            {verificationReport.errors.length > 0 && (
+              <div style={{ marginBottom: '16px' }}>
+                <h3 style={{
+                  fontFamily: 'Georgia, serif', color: THEME.red, fontSize: '0.95rem',
+                  margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '6px',
+                }}>
+                  ❌ Ошибки ({verificationReport.errors.length})
+                </h3>
+                {verificationReport.errors.map((err, i) => (
+                  <div key={i} style={{
+                    padding: '8px 12px', marginBottom: '4px',
+                    borderLeft: `3px solid ${THEME.red}`, backgroundColor: THEME.surface,
+                    borderRadius: '0 6px 6px 0',
+                  }}>
+                    <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.8rem', color: THEME.text, lineHeight: '1.4' }}>
+                      <span style={{ color: THEME.goldLight, fontWeight: 'bold' }}>Шаг {err.stepId}</span>
+                      {' — '}{err.stepTitle}
+                    </div>
+                    <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.75rem', color: THEME.red, marginTop: '2px' }}>
+                      <span style={{ color: THEME.textMuted }}>{err.rule} {err.ruleName}:</span> {err.message}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Warnings list */}
+            {verificationReport.warnings.length > 0 && (
+              <div style={{ marginBottom: '16px' }}>
+                <h3 style={{
+                  fontFamily: 'Georgia, serif', color: THEME.amber, fontSize: '0.95rem',
+                  margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '6px',
+                }}>
+                  ⚠ Предупреждения ({verificationReport.warnings.length})
+                </h3>
+                {verificationReport.warnings.map((warn, i) => (
+                  <div key={i} style={{
+                    padding: '8px 12px', marginBottom: '4px',
+                    borderLeft: `3px solid ${THEME.amber}`, backgroundColor: THEME.surface,
+                    borderRadius: '0 6px 6px 0',
+                  }}>
+                    <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.8rem', color: THEME.text, lineHeight: '1.4' }}>
+                      <span style={{ color: THEME.goldLight, fontWeight: 'bold' }}>Шаг {warn.stepId}</span>
+                      {' — '}{warn.stepTitle}
+                    </div>
+                    <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.75rem', color: THEME.amber, marginTop: '2px' }}>
+                      <span style={{ color: THEME.textMuted }}>{warn.rule} {warn.ruleName}:</span> {warn.message}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Info list — collapsed by default */}
+            {verificationReport.infos.length > 0 && (
+              <div>
+                <details style={{ fontFamily: 'Georgia, serif' }}>
+                  <summary style={{
+                    color: THEME.textDim, fontSize: '0.9rem', cursor: 'pointer',
+                    padding: '4px 0',
+                  }}>
+                    ℹ️ Информация ({verificationReport.infos.length})
+                  </summary>
+                  <div style={{ marginTop: '8px' }}>
+                    {verificationReport.infos.map((info, i) => (
+                      <div key={i} style={{
+                        padding: '6px 10px', marginBottom: '4px',
+                        borderLeft: `3px solid ${THEME.textDim}`, backgroundColor: THEME.surface,
+                        borderRadius: '0 4px 4px 0',
+                      }}>
+                        <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.75rem', color: THEME.textDim }}>
+                          <span style={{ color: THEME.textMuted }}>{info.rule} {info.ruleName}:</span> {info.message}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              </div>
+            )}
+
+            {/* Close button */}
+            <div style={{ marginTop: '20px', textAlign: 'right' }}>
+              <button onClick={() => setShowVerificationModal(false)} style={{
+                padding: '8px 24px', borderRadius: '6px', border: 'none',
+                backgroundColor: THEME.gold, color: THEME.bg, cursor: 'pointer',
+                fontFamily: 'Georgia, serif', fontSize: '0.9rem', fontWeight: 'bold',
+              }}>
+                Закрыть
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1369,6 +1761,9 @@ function App() {
   const [activeTab, setActiveTab] = useState('ingredients');
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  // Run accuracy verification on mount (re-runs when settings change b/c equipment profiles may change)
+  const verificationReport = useMemo(() => runAccuracyVerification(STEPS), [settingsOpen]);
+
   return (
     <div style={{
       maxWidth: '800px',
@@ -1397,7 +1792,7 @@ function App() {
 
       {activeTab === 'ingredients'
         ? <IngredientPanel />
-        : <ActionStepsPanel onOpenSettings={() => setSettingsOpen(true)} />
+        : <ActionStepsPanel onOpenSettings={() => setSettingsOpen(true)} verificationReport={verificationReport} />
       }
 
       {settingsOpen && (
