@@ -834,7 +834,33 @@ function runAccuracyVerification(steps) {
 // React hooks
 // ═══════════════════════════════════════════════════════════════
 
-const { useState, useMemo } = React;
+const { useState, useEffect, useMemo } = React;
+
+// ═══════════════════════════════════════════════════════════════
+// Responsive breakpoint hook
+// ═══════════════════════════════════════════════════════════════
+
+function useWindowWidth() {
+  const [width, setWidth] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth : 1024
+  );
+  useEffect(() => {
+    let ticking = false;
+    const handleResize = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setWidth(window.innerWidth);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  const breakpoint = width <= 600 ? 'mobile' : width <= 900 ? 'tablet' : 'desktop';
+  return { width, breakpoint };
+}
 
 // ═══════════════════════════════════════════════════════════════
 // Accuracy tag component
@@ -871,17 +897,23 @@ function AccuracyTag({ accuracy }) {
 // ═══════════════════════════════════════════════════════════════
 
 function TabBar({ activeTab, onTabChange }) {
+  const { breakpoint } = useWindowWidth();
+  const isMobile = breakpoint === 'mobile';
   const tabs = [
     { id: 'ingredients', label: 'Ингредиенты' },
     { id: 'steps', label: 'Этапы приготовления' },
   ];
   return (
-    <div style={{ display: 'flex', borderBottom: `2px solid ${THEME.border}`, marginBottom: '20px' }}>
+    <div style={{ display: 'flex', borderBottom: `2px solid ${THEME.border}`, marginBottom: isMobile ? '12px' : '20px' }}>
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
         return (
           <button key={tab.id} onClick={() => onTabChange(tab.id)} style={{
-            flex: 1, padding: '12px 24px', fontSize: '1rem', fontFamily: 'Georgia, serif',
+            flex: 1,
+            padding: isMobile ? '10px 12px' : '12px 24px',
+            minHeight: '44px',
+            fontSize: isMobile ? '0.9rem' : '1rem',
+            fontFamily: 'Georgia, serif',
             fontWeight: isActive ? 'bold' : 'normal',
             color: isActive ? THEME.goldLight : THEME.textDim,
             backgroundColor: 'transparent', border: 'none',
@@ -914,8 +946,16 @@ const NECESSITY_COLORS = {
 };
 
 function IngredientPanel() {
+  const { breakpoint } = useWindowWidth();
+  const isMobile = breakpoint === 'mobile';
   const [expandedAll, setExpandedAll] = useState(false);
   const [expandedCards, setExpandedCards] = useState({});
+
+  const cardPad = isMobile ? '12px' : '16px';
+  const cellMinWidth = isMobile ? '60px' : '80px';
+  const matrixMinWidth = isMobile ? '360px' : '480px';
+  const h2Size = isMobile ? '1.1rem' : '1.25rem';
+  const ingNameSize = isMobile ? '0.95rem' : '1.05rem';
 
   const toggleAll = () => {
     if (expandedAll) {
@@ -936,7 +976,7 @@ function IngredientPanel() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <h2 style={{ fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: '1.25rem', margin: 0 }}>
+        <h2 style={{ fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: h2Size, margin: 0 }}>
           Ингредиенты
         </h2>
         <button onClick={toggleAll} style={{
@@ -954,11 +994,11 @@ function IngredientPanel() {
         const zoneType = ing.toleranceZone.type;
 
         return (
-          <div key={i} style={STYLES.card}>
+          <div key={i} style={{ ...STYLES.card, padding: cardPad }}>
             {/* Card header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
               <div>
-                <span style={{ fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: '1.05rem', fontWeight: 'bold', marginRight: '8px' }}>
+                <span style={{ fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: ingNameSize, fontWeight: 'bold', marginRight: '8px' }}>
                   {ing.name}
                 </span>
                 <span style={STYLES.badge(necColor)}>{ing.necessity}</span>
@@ -987,9 +1027,9 @@ function IngredientPanel() {
               <div>
                 {/* 6-column matrix */}
                 <div style={{ overflowX: 'auto', marginBottom: '12px' }}>
-                  <div style={{ display: 'flex', minWidth: '480px', border: `1px solid ${THEME.border}`, borderRadius: '6px', overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', minWidth: matrixMinWidth, border: `1px solid ${THEME.border}`, borderRadius: '6px', overflow: 'hidden' }}>
                     {MATRIX_COLS.map((col, ci) => (
-                      <div key={ci} style={STYLES.matrixCell(ci === 3)}>
+                      <div key={ci} style={{ ...STYLES.matrixCell(ci === 3), minWidth: cellMinWidth }}>
                         <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.75rem', color: THEME.textMuted, marginBottom: '4px' }}>
                           {col.label}
                           <div style={{ fontSize: '0.6rem' }}>{col.desc}</div>
@@ -1091,11 +1131,18 @@ function IngredientPanel() {
 // ═══════════════════════════════════════════════════════════════
 
 function ActionStepsPanel({ onOpenSettings, verificationReport }) {
+  const { breakpoint } = useWindowWidth();
+  const isMobile = breakpoint === 'mobile';
   const [expandedAll, setExpandedAll] = useState(false);
   const [expandedSteps, setExpandedSteps] = useState({});
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [showEquipmentMap, setShowEquipmentMap] = useState(false);
   const [calibrations, setCalibrations] = useState(() => CalibrationStore.getAll());
+
+  const cardPad = isMobile ? '12px' : '16px';
+  const h2Size = isMobile ? '1.1rem' : '1.25rem';
+  const modalWidth = isMobile ? '95%' : '90%';
+  const inputFontSize = isMobile ? '16px' : '0.8rem';
   const [editingCal, setEditingCal] = useState({}); // key -> bool
   const [calFormState, setCalFormState] = useState({}); // calKey -> {optimalTime,optimalTemp,notes}
 
@@ -1129,7 +1176,7 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
       {/* Panel header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <h2 style={{ fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: '1.25rem', margin: 0 }}>
+          <h2 style={{ fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: h2Size, margin: 0 }}>
             Этапы приготовления
           </h2>
           {/* Calibration coverage badge */}
@@ -1235,7 +1282,7 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
         const isAirFryer = step.equipment === 'NinjaMAXPRO';
 
         return (
-          <div key={i} id={`step-card-${step.id}`} style={{ ...STYLES.card, marginTop: '12px', position: 'relative' }}>
+          <div key={i} id={`step-card-${step.id}`} style={{ ...STYLES.card, padding: cardPad, marginTop: '12px', position: 'relative' }}>
             {/* Step number badge */}
             <div style={{
               position: 'absolute', top: '-10px', left: '-10px',
@@ -1427,7 +1474,7 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
                       ) : (
                         /* EDIT / CREATE form */
                         <div>
-                          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                          <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '10px', flexWrap: 'wrap', marginBottom: '8px' }}>
                             <div style={{ flex: '1 1 120px' }}>
                               <label style={{ display: 'block', fontFamily: 'Georgia, serif', color: THEME.textMuted, fontSize: '0.7rem', marginBottom: '2px' }}>
                                 ⏱ Опт. время
@@ -1439,7 +1486,7 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
                                 style={{
                                   width: '100%', padding: '5px 8px', borderRadius: '4px',
                                   border: `1px solid ${THEME.border}`, backgroundColor: THEME.card,
-                                  color: THEME.text, fontFamily: 'Georgia, serif', fontSize: '0.8rem',
+                                  color: THEME.text, fontFamily: 'Georgia, serif', fontSize: inputFontSize,
                                   boxSizing: 'border-box',
                                 }}
                               />
@@ -1455,7 +1502,7 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
                                 style={{
                                   width: '100%', padding: '5px 8px', borderRadius: '4px',
                                   border: `1px solid ${THEME.border}`, backgroundColor: THEME.card,
-                                  color: THEME.text, fontFamily: 'Georgia, serif', fontSize: '0.8rem',
+                                  color: THEME.text, fontFamily: 'Georgia, serif', fontSize: inputFontSize,
                                   boxSizing: 'border-box',
                                 }}
                               />
@@ -1472,7 +1519,7 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
                               style={{
                                 width: '100%', padding: '5px 8px', borderRadius: '4px',
                                 border: `1px solid ${THEME.border}`, backgroundColor: THEME.card,
-                                color: THEME.text, fontFamily: 'Georgia, serif', fontSize: '0.8rem',
+                                color: THEME.text, fontFamily: 'Georgia, serif', fontSize: inputFontSize,
                                 boxSizing: 'border-box',
                               }}
                             />
@@ -1521,7 +1568,7 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
         </button>
 
         {showEquipmentMap && (
-          <div style={{ ...STYLES.card, marginTop: '10px', padding: '16px', overflowX: 'auto' }}>
+          <div style={{ ...STYLES.card, marginTop: '10px', padding: cardPad, overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Georgia, serif', fontSize: '0.8rem' }}>
               <thead>
                 <tr style={{ borderBottom: `2px solid ${THEME.goldDim}` }}>
@@ -1651,7 +1698,7 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
         }} onClick={(e) => { if (e.target === e.currentTarget) setShowVerificationModal(false); }}>
           <div style={{
             backgroundColor: THEME.bg, border: `2px solid ${THEME.goldDim}`, borderRadius: '12px',
-            padding: '24px', maxWidth: '650px', width: '90%', maxHeight: '85vh', overflowY: 'auto',
+            padding: '24px', maxWidth: '650px', width: modalWidth, maxHeight: '85vh', overflowY: 'auto',
             color: THEME.text,
           }}>
             {/* Modal header */}
@@ -1820,6 +1867,11 @@ const EQUIPMENT_TYPES = [
 ];
 
 function EquipmentSettingsPanel({ onClose }) {
+  const { breakpoint } = useWindowWidth();
+  const isMobile = breakpoint === 'mobile';
+  const modalWidth = isMobile ? '95%' : '90%';
+  const inputFontSize = isMobile ? '16px' : '0.9rem';
+  const cardPad = isMobile ? '12px' : '16px';
   const [profiles, setProfiles] = useState(() => EquipmentProfiles.getAll());
   const [editingId, setEditingId] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -1892,7 +1944,7 @@ function EquipmentSettingsPanel({ onClose }) {
     }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{
         backgroundColor: THEME.bg, border: `2px solid ${THEME.goldDim}`, borderRadius: '12px',
-        padding: '24px', maxWidth: '600px', width: '90%', maxHeight: '85vh', overflowY: 'auto',
+        padding: isMobile ? '16px' : '24px', maxWidth: '600px', width: modalWidth, maxHeight: '85vh', overflowY: 'auto',
         color: THEME.text,
       }}>
         {/* Header */}
@@ -1991,7 +2043,7 @@ function EquipmentSettingsPanel({ onClose }) {
             + Добавить устройство
           </button>
         ) : (
-          <div style={{ ...STYLES.card, marginTop: '16px', borderColor: THEME.goldDim }}>
+          <div style={{ ...STYLES.card, padding: cardPad, marginTop: '16px', borderColor: THEME.goldDim }}>
             <h3 style={{ fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: '1rem', margin: '0 0 12px 0' }}>
               {editingId ? 'Редактировать устройство' : 'Новое устройство'}
             </h3>
@@ -2011,7 +2063,7 @@ function EquipmentSettingsPanel({ onClose }) {
                 style={{
                   width: '100%', padding: '8px 10px', borderRadius: '6px',
                   border: `1px solid ${THEME.border}`, backgroundColor: THEME.surface,
-                  color: THEME.text, fontFamily: 'Georgia, serif', fontSize: '0.9rem',
+                  color: THEME.text, fontFamily: 'Georgia, serif', fontSize: inputFontSize,
                   boxSizing: 'border-box',
                 }} />
             </div>
@@ -2025,7 +2077,7 @@ function EquipmentSettingsPanel({ onClose }) {
                 style={{
                   width: '100%', padding: '8px 10px', borderRadius: '6px',
                   border: `1px solid ${THEME.border}`, backgroundColor: THEME.surface,
-                  color: THEME.text, fontFamily: 'Georgia, serif', fontSize: '0.9rem',
+                  color: THEME.text, fontFamily: 'Georgia, serif', fontSize: inputFontSize,
                   boxSizing: 'border-box',
                 }}>
                 {EQUIPMENT_TYPES.map(t => (
@@ -2044,7 +2096,7 @@ function EquipmentSettingsPanel({ onClose }) {
                 style={{
                   width: '100%', padding: '8px 10px', borderRadius: '6px',
                   border: `1px solid ${THEME.border}`, backgroundColor: THEME.surface,
-                  color: THEME.text, fontFamily: 'Georgia, serif', fontSize: '0.9rem',
+                  color: THEME.text, fontFamily: 'Georgia, serif', fontSize: inputFontSize,
                   boxSizing: 'border-box',
                 }} />
             </div>
@@ -2060,7 +2112,7 @@ function EquipmentSettingsPanel({ onClose }) {
                   style={{
                     width: '100%', padding: '8px 10px', borderRadius: '6px',
                     border: `1px solid ${THEME.border}`, backgroundColor: THEME.surface,
-                    color: THEME.text, fontFamily: 'Georgia, serif', fontSize: '0.9rem',
+                    color: THEME.text, fontFamily: 'Georgia, serif', fontSize: inputFontSize,
                     boxSizing: 'border-box',
                   }} />
               </div>
@@ -2073,7 +2125,7 @@ function EquipmentSettingsPanel({ onClose }) {
                   style={{
                     width: '100%', padding: '8px 10px', borderRadius: '6px',
                     border: `1px solid ${THEME.border}`, backgroundColor: THEME.surface,
-                    color: THEME.text, fontFamily: 'Georgia, serif', fontSize: '0.9rem',
+                    color: THEME.text, fontFamily: 'Georgia, serif', fontSize: inputFontSize,
                     boxSizing: 'border-box',
                   }} />
               </div>
@@ -2090,7 +2142,7 @@ function EquipmentSettingsPanel({ onClose }) {
                 style={{
                   width: '100%', padding: '8px 10px', borderRadius: '6px',
                   border: `1px solid ${THEME.border}`, backgroundColor: THEME.surface,
-                  color: THEME.text, fontFamily: 'Georgia, serif', fontSize: '0.9rem',
+                  color: THEME.text, fontFamily: 'Georgia, serif', fontSize: inputFontSize,
                   boxSizing: 'border-box',
                 }} />
             </div>
@@ -2105,7 +2157,7 @@ function EquipmentSettingsPanel({ onClose }) {
                 style={{
                   width: '100%', padding: '8px 10px', borderRadius: '6px',
                   border: `1px solid ${THEME.border}`, backgroundColor: THEME.surface,
-                  color: THEME.text, fontFamily: 'Georgia, serif', fontSize: '0.9rem',
+                  color: THEME.text, fontFamily: 'Georgia, serif', fontSize: inputFontSize,
                   boxSizing: 'border-box',
                 }} />
             </div>
@@ -2137,6 +2189,8 @@ function EquipmentSettingsPanel({ onClose }) {
 // ═══════════════════════════════════════════════════════════════
 
 function App() {
+  const { breakpoint } = useWindowWidth();
+  const isMobile = breakpoint === 'mobile';
   const [activeTab, setActiveTab] = useState('ingredients');
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -2147,14 +2201,15 @@ function App() {
     <div style={{
       maxWidth: '800px',
       margin: '0 auto',
-      padding: '24px 16px',
+      padding: isMobile ? '12px 8px' : '24px 16px',
       backgroundColor: THEME.bg,
       minHeight: '100vh',
       fontFamily: 'Georgia, serif',
       color: THEME.text,
+      overflowX: 'hidden',
     }}>
       {/* Header row: tabs + gear icon */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '12px' }}>
         <div style={{ flex: 1 }}>
           <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
         </div>
@@ -2163,8 +2218,16 @@ function App() {
           title="Настройки оборудования"
           style={{
             background: 'none', border: `1px solid ${THEME.border}`, borderRadius: '8px',
-            color: THEME.textDim, cursor: 'pointer', padding: '8px 10px', fontSize: '1.2rem',
-            lineHeight: '1', marginBottom: '20px',
+            color: THEME.textDim, cursor: 'pointer',
+            width: isMobile ? '44px' : undefined,
+            height: isMobile ? '44px' : undefined,
+            minWidth: '44px',
+            minHeight: '44px',
+            padding: isMobile ? '0' : '8px 10px',
+            fontSize: isMobile ? '1.4rem' : '1.2rem',
+            lineHeight: '1',
+            marginBottom: isMobile ? '12px' : '20px',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           }}
         >⚙️</button>
       </div>
