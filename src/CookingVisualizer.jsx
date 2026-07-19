@@ -191,6 +191,65 @@ const EquipmentProfiles = {
 };
 
 // ═══════════════════════════════════════════════════════════════
+// CALIBRATION STORE — localStorage-backed per-equipment-step records
+// ═══════════════════════════════════════════════════════════════
+
+const CALIBRATION_STORE_KEY = 'cookingviz_calibrations';
+
+const CalibrationStore = {
+  _data: null,
+
+  _init() {
+    if (this._data !== null) return;
+    try {
+      const raw = localStorage.getItem(CALIBRATION_STORE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (typeof parsed === 'object' && parsed !== null) {
+          this._data = parsed;
+        }
+      }
+    } catch (e) { /* corrupt — start fresh */ }
+    if (!this._data) {
+      this._data = {};
+    }
+  },
+
+  _save() {
+    localStorage.setItem(CALIBRATION_STORE_KEY, JSON.stringify(this._data));
+  },
+
+  /** Get calibration for a given equipment-step pair, or null */
+  get(equipmentId, stepId) {
+    this._init();
+    const key = `${equipmentId}::${stepId}`;
+    return this._data[key] || null;
+  },
+
+  /** Set (create or update) calibration for a given equipment-step pair */
+  set(equipmentId, stepId, record) {
+    this._init();
+    const key = `${equipmentId}::${stepId}`;
+    this._data[key] = {
+      equipmentId,
+      stepId,
+      optimalTime: record.optimalTime || '',
+      optimalTemp: record.optimalTemp || '',
+      notes: record.notes || '',
+      calibratedAt: new Date().toISOString(),
+    };
+    this._save();
+    return this._data[key];
+  },
+
+  /** Get all stored calibrations as an array */
+  getAll() { this._init(); return Object.values(this._data); },
+
+  /** Clear all calibrations */
+  clear() { this._data = {}; this._save(); },
+};
+
+// ═══════════════════════════════════════════════════════════════
 // INGREDIENTS — hardcoded from ingredient-roles.md reference
 // ═══════════════════════════════════════════════════════════════
 
@@ -1035,6 +1094,10 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
   const [expandedAll, setExpandedAll] = useState(false);
   const [expandedSteps, setExpandedSteps] = useState({});
   const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [showEquipmentMap, setShowEquipmentMap] = useState(false);
+  const [calibrations, setCalibrations] = useState(() => CalibrationStore.getAll());
+  const [editingCal, setEditingCal] = useState({}); // key -> bool
+  const [calFormState, setCalFormState] = useState({}); // calKey -> {optimalTime,optimalTemp,notes}
 
   const toggleAll = () => {
     if (expandedAll) {
@@ -1052,6 +1115,15 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
     setExpandedSteps((prev) => ({ ...prev, [i]: !prev[i] }));
   };
 
+  const refreshCalibrations = () => setCalibrations(CalibrationStore.getAll());
+
+  // Calibration coverage stats
+  const calibratableSteps = STEPS.filter(s => s.equipment === 'NinjaMAXPRO' && s.calibration);
+  const calibratedCount = calibratableSteps.filter(s => CalibrationStore.get('NinjaMAXPRO', s.id)).length;
+  const calCoverageBadge = calibratableSteps.length > 0
+    ? { count: calibratedCount, total: calibratableSteps.length, allDone: calibratedCount === calibratableSteps.length }
+    : null;
+
   return (
     <div>
       {/* Panel header */}
@@ -1060,6 +1132,24 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
           <h2 style={{ fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: '1.25rem', margin: 0 }}>
             Этапы приготовления
           </h2>
+          {/* Calibration coverage badge */}
+          {calCoverageBadge && (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: '4px',
+              padding: '4px 12px', borderRadius: '16px',
+              border: `1px solid ${calCoverageBadge.allDone ? THEME.green : THEME.amber}`,
+              color: calCoverageBadge.allDone ? THEME.green : THEME.amber,
+              fontFamily: 'Georgia, serif',
+              fontSize: '0.75rem',
+              fontWeight: 'bold',
+              backgroundColor: calCoverageBadge.allDone ? THEME.green + '15' : THEME.amber + '15',
+            }}>
+              <span style={{ fontSize: '0.85rem' }}>
+                {calCoverageBadge.allDone ? '✅' : '📝'}
+              </span>
+              {calCoverageBadge.count}/{calCoverageBadge.total} откалибровано
+            </span>
+          )}
           {/* Verification status badge */}
           {verificationReport && (() => {
             const { errors, warnings } = verificationReport;
@@ -1145,7 +1235,7 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
         const isAirFryer = step.equipment === 'NinjaMAXPRO';
 
         return (
-          <div key={i} style={{ ...STYLES.card, marginTop: '12px', position: 'relative' }}>
+          <div key={i} id={`step-card-${step.id}`} style={{ ...STYLES.card, marginTop: '12px', position: 'relative' }}>
             {/* Step number badge */}
             <div style={{
               position: 'absolute', top: '-10px', left: '-10px',
@@ -1257,11 +1347,300 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
                     </div>
                   </div>
                 )}
+
+                {/* User calibration UI (air fryer steps only) */}
+                {isAirFryer && step.calibration && (() => {
+                  const cal = CalibrationStore.get('NinjaMAXPRO', step.id);
+                  const calKey = `NinjaMAXPRO::${step.id}`;
+                  const isEditing = editingCal[calKey] || false;
+                  const form = calFormState[calKey] || { optimalTime: cal ? cal.optimalTime : '', optimalTemp: cal ? cal.optimalTemp : '', notes: cal ? cal.notes : '' };
+
+                  const updateForm = (field, value) => {
+                    setCalFormState(prev => ({ ...prev, [calKey]: { ...prev[calKey], [field]: value } }));
+                  };
+
+                  const handleSaveCal = () => {
+                    CalibrationStore.set('NinjaMAXPRO', step.id, form);
+                    setEditingCal(prev => ({ ...prev, [calKey]: false }));
+                    setCalFormState(prev => { const n = { ...prev }; delete n[calKey]; return n; });
+                    refreshCalibrations();
+                  };
+
+                  const handleResetCal = () => {
+                    const data = CalibrationStore._data;
+                    delete data[calKey];
+                    CalibrationStore._save();
+                    setCalFormState(prev => { const n = { ...prev }; delete n[calKey]; return n; });
+                    refreshCalibrations();
+                  };
+
+                  const startEdit = () => {
+                    setCalFormState(prev => ({
+                      ...prev,
+                      [calKey]: { optimalTime: cal ? cal.optimalTime : '', optimalTemp: cal ? cal.optimalTemp : '', notes: cal ? cal.notes : '' }
+                    }));
+                    setEditingCal(prev => ({ ...prev, [calKey]: true }));
+                  };
+
+                  return (
+                    <div style={{
+                      padding: '12px 14px', marginBottom: '8px',
+                      borderLeft: `3px solid ${THEME.blue}`, backgroundColor: THEME.surface,
+                      borderRadius: '0 6px 6px 0',
+                    }}>
+                      <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.8rem', color: THEME.blue, fontWeight: 'bold', marginBottom: '8px' }}>
+                        📝 Моя калибровка
+                      </div>
+
+                      {cal && !isEditing ? (
+                        /* READ-ONLY saved calibration */
+                        <div>
+                          <div style={{ fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.8rem', lineHeight: '1.6' }}>
+                            {cal.optimalTime && <span style={{ marginRight: '16px' }}>⏱ <strong>{cal.optimalTime}</strong></span>}
+                            {cal.optimalTemp && <span style={{ marginRight: '16px' }}>🌡 <strong>{cal.optimalTemp}</strong></span>}
+                          </div>
+                          {cal.notes && (
+                            <div style={{ fontFamily: 'Georgia, serif', color: THEME.textMuted, fontSize: '0.75rem', marginTop: '4px', fontStyle: 'italic' }}>
+                              {cal.notes}
+                            </div>
+                          )}
+                          <div style={{ fontFamily: 'Georgia, serif', color: THEME.textMuted, fontSize: '0.7rem', marginTop: '6px' }}>
+                            Откалибровано: {new Date(cal.calibratedAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                            <button onClick={startEdit} style={{
+                              padding: '4px 12px', borderRadius: '4px', border: `1px solid ${THEME.border}`,
+                              backgroundColor: THEME.surface, color: THEME.textDim, cursor: 'pointer',
+                              fontSize: '0.75rem', fontFamily: 'Georgia, serif',
+                            }}>
+                              ✏️ Редактировать
+                            </button>
+                            <button onClick={handleResetCal} style={{
+                              padding: '4px 12px', borderRadius: '4px', border: `1px solid ${THEME.border}`,
+                              backgroundColor: 'transparent', color: THEME.red, cursor: 'pointer',
+                              fontSize: '0.75rem', fontFamily: 'Georgia, serif',
+                            }}>
+                              Сбросить
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* EDIT / CREATE form */
+                        <div>
+                          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                            <div style={{ flex: '1 1 120px' }}>
+                              <label style={{ display: 'block', fontFamily: 'Georgia, serif', color: THEME.textMuted, fontSize: '0.7rem', marginBottom: '2px' }}>
+                                ⏱ Опт. время
+                              </label>
+                              <input
+                                value={form.optimalTime}
+                                onChange={(e) => updateForm('optimalTime', e.target.value)}
+                                placeholder="12–14 мин"
+                                style={{
+                                  width: '100%', padding: '5px 8px', borderRadius: '4px',
+                                  border: `1px solid ${THEME.border}`, backgroundColor: THEME.card,
+                                  color: THEME.text, fontFamily: 'Georgia, serif', fontSize: '0.8rem',
+                                  boxSizing: 'border-box',
+                                }}
+                              />
+                            </div>
+                            <div style={{ flex: '1 1 120px' }}>
+                              <label style={{ display: 'block', fontFamily: 'Georgia, serif', color: THEME.textMuted, fontSize: '0.7rem', marginBottom: '2px' }}>
+                                🌡 Опт. температура
+                              </label>
+                              <input
+                                value={form.optimalTemp}
+                                onChange={(e) => updateForm('optimalTemp', e.target.value)}
+                                placeholder="195 °C"
+                                style={{
+                                  width: '100%', padding: '5px 8px', borderRadius: '4px',
+                                  border: `1px solid ${THEME.border}`, backgroundColor: THEME.card,
+                                  color: THEME.text, fontFamily: 'Georgia, serif', fontSize: '0.8rem',
+                                  boxSizing: 'border-box',
+                                }}
+                              />
+                            </div>
+                          </div>
+                          <div style={{ marginBottom: '8px' }}>
+                            <label style={{ display: 'block', fontFamily: 'Georgia, serif', color: THEME.textMuted, fontSize: '0.7rem', marginBottom: '2px' }}>
+                              📋 Заметки
+                            </label>
+                            <input
+                              value={form.notes}
+                              onChange={(e) => updateForm('notes', e.target.value)}
+                              placeholder="Первая партия — 12 мин, вторая — 14 мин"
+                              style={{
+                                width: '100%', padding: '5px 8px', borderRadius: '4px',
+                                border: `1px solid ${THEME.border}`, backgroundColor: THEME.card,
+                                color: THEME.text, fontFamily: 'Georgia, serif', fontSize: '0.8rem',
+                                boxSizing: 'border-box',
+                              }}
+                            />
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button onClick={handleSaveCal} style={{
+                              padding: '5px 16px', borderRadius: '4px', border: 'none',
+                              backgroundColor: THEME.green, color: THEME.bg, cursor: 'pointer',
+                              fontSize: '0.8rem', fontFamily: 'Georgia, serif', fontWeight: 'bold',
+                            }}>
+                              💾 Сохранить
+                            </button>
+                            {cal && (
+                              <button onClick={() => setEditingCal(prev => ({ ...prev, [calKey]: false }))} style={{
+                                padding: '5px 14px', borderRadius: '4px', border: `1px solid ${THEME.border}`,
+                                backgroundColor: THEME.surface, color: THEME.textDim, cursor: 'pointer',
+                                fontSize: '0.8rem', fontFamily: 'Georgia, serif',
+                              }}>
+                                Отмена
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>
         );
       })}
+
+      {/* Equipment-to-step mapping table */}
+      <div style={{ marginTop: '20px' }}>
+        <button
+          onClick={() => setShowEquipmentMap(!showEquipmentMap)}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            padding: '8px 16px', borderRadius: '6px', border: `1px solid ${THEME.border}`,
+            backgroundColor: THEME.surface, color: THEME.textDim, cursor: 'pointer',
+            fontFamily: 'Georgia, serif', fontSize: '0.85rem',
+          }}
+        >
+          📋 Карта оборудования {showEquipmentMap ? '▲' : '▼'}
+        </button>
+
+        {showEquipmentMap && (
+          <div style={{ ...STYLES.card, marginTop: '10px', padding: '16px', overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Georgia, serif', fontSize: '0.8rem' }}>
+              <thead>
+                <tr style={{ borderBottom: `2px solid ${THEME.goldDim}` }}>
+                  <th style={{ textAlign: 'left', padding: '8px 10px', color: THEME.goldLight, fontWeight: 'bold' }}>
+                    Оборудование
+                  </th>
+                  <th style={{ textAlign: 'left', padding: '8px 10px', color: THEME.goldLight, fontWeight: 'bold' }}>
+                    Этапы
+                  </th>
+                  <th style={{ textAlign: 'center', padding: '8px 10px', color: THEME.goldLight, fontWeight: 'bold' }}>
+                    Калибровка
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {(() => {
+                  const profiles = EquipmentProfiles.getAll();
+                  // Build equipment->steps map
+                  const map = {};
+                  const noEquipmentSteps = [];
+                  for (const step of STEPS) {
+                    if (step.equipment) {
+                      if (!map[step.equipment]) map[step.equipment] = [];
+                      map[step.equipment].push(step);
+                    } else {
+                      noEquipmentSteps.push(step);
+                    }
+                  }
+
+                  const rows = [];
+                  // Rows for each equipment profile present in steps
+                  for (const [eqId, steps] of Object.entries(map)) {
+                    const profile = profiles.find(p => p.id === eqId);
+                    const eqName = profile ? `${profile.icon || ''} ${profile.name}` : `${eqId} (удалено)`;
+                    const calCount = steps.filter(s => CalibrationStore.get(eqId, s.id)).length;
+                    const calStatus = calCount === 0 ? '—' : `${calCount}/${steps.length}`;
+                    const calColor = calCount === 0 ? THEME.textMuted : calCount === steps.length ? THEME.green : THEME.amber;
+
+                    rows.push(
+                      <tr key={eqId} style={{ borderBottom: `1px solid ${THEME.border}` }}>
+                        <td style={{ padding: '8px 10px', color: profile ? THEME.text : THEME.red, fontWeight: 'bold', verticalAlign: 'top' }}>
+                          {eqName}
+                        </td>
+                        <td style={{ padding: '8px 10px', verticalAlign: 'top' }}>
+                          {steps.map(s => (
+                            <div key={s.id} style={{ marginBottom: '3px' }}>
+                              <span
+                                onClick={() => {
+                                  const idx = STEPS.indexOf(s);
+                                  if (idx >= 0) {
+                                    setExpandedSteps(prev => ({ ...prev, [idx]: true }));
+                                    setTimeout(() => {
+                                      const el = document.getElementById(`step-card-${s.id}`);
+                                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    }, 50);
+                                  }
+                                }}
+                                style={{
+                                  color: THEME.blue, cursor: 'pointer', textDecoration: 'underline',
+                                  fontSize: '0.8rem',
+                                }}
+                              >
+                                {s.id}. {s.title}
+                              </span>
+                            </div>
+                          ))}
+                        </td>
+                        <td style={{ padding: '8px 10px', textAlign: 'center', color: calColor, fontWeight: 'bold', verticalAlign: 'top' }}>
+                          {calStatus}
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  // "Все шаги" row for equipment-less steps
+                  if (noEquipmentSteps.length > 0) {
+                    rows.push(
+                      <tr key="_noeq" style={{ borderBottom: `1px solid ${THEME.border}`, backgroundColor: THEME.surface }}>
+                        <td style={{ padding: '8px 10px', color: THEME.textDim, fontStyle: 'italic', verticalAlign: 'top' }}>
+                          Все шаги
+                        </td>
+                        <td style={{ padding: '8px 10px', verticalAlign: 'top' }}>
+                          {noEquipmentSteps.map(s => (
+                            <div key={s.id} style={{ marginBottom: '3px' }}>
+                              <span
+                                onClick={() => {
+                                  const idx = STEPS.indexOf(s);
+                                  if (idx >= 0) {
+                                    setExpandedSteps(prev => ({ ...prev, [idx]: true }));
+                                    setTimeout(() => {
+                                      const el = document.getElementById(`step-card-${s.id}`);
+                                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    }, 50);
+                                  }
+                                }}
+                                style={{
+                                  color: THEME.textDim, cursor: 'pointer', textDecoration: 'underline',
+                                  fontSize: '0.8rem',
+                                }}
+                              >
+                                {s.id}. {s.title}
+                              </span>
+                            </div>
+                          ))}
+                        </td>
+                        <td style={{ padding: '8px 10px', textAlign: 'center', color: THEME.textMuted, verticalAlign: 'top' }}>
+                          —
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  return rows;
+                })()}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Verification report modal */}
       {showVerificationModal && verificationReport && (
