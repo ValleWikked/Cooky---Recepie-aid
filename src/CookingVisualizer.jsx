@@ -72,32 +72,121 @@ const STYLES = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// EQUIPMENT — verified specs for 5 user devices
+// EQUIPMENT PROFILES — localStorage-backed profile store
 // ═══════════════════════════════════════════════════════════════
 
-const EQUIPMENT = {
-  NinjaMAXPRO: {
+const EQUIPMENT_STORE_KEY = 'cookingviz_equipment';
+
+const DEFAULT_PROFILES = [
+  {
+    id: 'NinjaMAXPRO',
     name: 'Ninja MAX PRO',
+    type: 'airfryer',
     capacity: '6.2 L',
     maxTemp: 240,
+    bowlCapacity: null,
     modes: ['Air Fry', 'Roast', 'Bake', 'Dehydrate', 'Reheat'],
+    icon: '🔥',
+    isDefault: true,
   },
-  KenwoodFDP22: {
+  {
+    id: 'KenwoodFDP22',
     name: 'Kenwood FDP22.130GY',
+    type: 'processor',
+    capacity: null,
+    maxTemp: null,
     bowlCapacity: '2.1 L',
     modes: ['Chop', 'Mix', 'Knead', 'Whisk', 'Purée'],
+    icon: '🍴',
+    isDefault: true,
   },
-  PanasonicSDYR2550: {
+  {
+    id: 'PanasonicSDYR2550',
     name: 'Panasonic SD-YR2550',
+    type: 'breadmaker',
+    capacity: null,
+    maxTemp: null,
+    bowlCapacity: null,
     modes: ['Basic', 'Whole Wheat', 'Dough', 'Gluten-Free'],
+    icon: '🍞',
+    isDefault: true,
   },
-  OZAVO: {
+  {
+    id: 'OZAVO',
     name: 'OZAVO sandwich maker',
+    type: 'sandwichmaker',
+    capacity: null,
+    maxTemp: null,
+    bowlCapacity: null,
     modes: ['Toast', 'Grill'],
+    icon: '🥪',
+    isDefault: true,
   },
-  Cecotec: {
+  {
+    id: 'Cecotec',
     name: 'Cecotec blender',
+    type: 'blender',
+    capacity: null,
+    maxTemp: null,
+    bowlCapacity: null,
     modes: ['Blend', 'Pulse'],
+    icon: '🥤',
+    isDefault: true,
+  },
+];
+
+const EquipmentProfiles = {
+  _profiles: null,
+
+  _init() {
+    if (this._profiles !== null) return;
+    try {
+      const raw = localStorage.getItem(EQUIPMENT_STORE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          this._profiles = parsed;
+        }
+      }
+    } catch (e) { /* corrupt data — fall back to defaults */ }
+    if (!this._profiles) {
+      this._profiles = DEFAULT_PROFILES.map(p => ({ ...p }));
+      this._save();
+    }
+  },
+
+  _save() {
+    localStorage.setItem(EQUIPMENT_STORE_KEY, JSON.stringify(this._profiles));
+  },
+
+  getAll() { this._init(); return this._profiles; },
+
+  getById(id) { this._init(); return this._profiles.find(p => p.id === id) || null; },
+
+  add(profile) {
+    this._init();
+    const newProfile = { ...profile, id: profile.id || `custom_${Date.now()}`, isDefault: false };
+    this._profiles.push(newProfile);
+    this._save();
+    return newProfile;
+  },
+
+  update(id, updates) {
+    this._init();
+    const idx = this._profiles.findIndex(p => p.id === id);
+    if (idx === -1) return null;
+    this._profiles[idx] = { ...this._profiles[idx], ...updates, id: this._profiles[idx].id, isDefault: this._profiles[idx].isDefault };
+    this._save();
+    return this._profiles[idx];
+  },
+
+  remove(id) {
+    this._init();
+    const profile = this._profiles.find(p => p.id === id);
+    if (!profile || profile.isDefault) return false;
+    this._profiles = this._profiles.filter(p => p.id !== id);
+    this._save();
+    return true;
   },
 };
 
@@ -750,7 +839,7 @@ function IngredientPanel() {
 // ACTION STEPS PANEL (Panel 2)
 // ═══════════════════════════════════════════════════════════════
 
-function ActionStepsPanel() {
+function ActionStepsPanel({ onOpenSettings }) {
   const [expandedAll, setExpandedAll] = useState(false);
   const [expandedSteps, setExpandedSteps] = useState({});
 
@@ -820,7 +909,8 @@ function ActionStepsPanel() {
       {/* Step cards */}
       {STEPS.map((step, i) => {
         const isExpanded = expandedSteps[i] || false;
-        const eq = step.equipment ? EQUIPMENT[step.equipment] : null;
+        const eq = step.equipment ? EquipmentProfiles.getById(step.equipment) : null;
+        const deletedEq = step.equipment && !eq;
         const isAirFryer = step.equipment === 'NinjaMAXPRO';
 
         return (
@@ -853,8 +943,22 @@ function ActionStepsPanel() {
             {/* Chips row */}
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', marginLeft: '24px', marginBottom: '8px', gap: '4px' }}>
               {eq && (
-                <span style={STYLES.chip} title={`${eq.name} · ${step.equipmentSetting}`}>
-                  {eq.name}{step.equipmentSetting ? ` · ${step.equipmentSetting}` : ''}
+                <span
+                  style={{ ...STYLES.chip, cursor: 'pointer' }}
+                  title={`${eq.name} · ${step.equipmentSetting} — нажмите для настроек оборудования`}
+                  onClick={onOpenSettings}
+                >
+                  {eq.icon ? `${eq.icon} ` : ''}{eq.name}{step.equipmentSetting ? ` · ${step.equipmentSetting}` : ''}
+                </span>
+              )}
+              {deletedEq && (
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '4px',
+                  padding: '3px 10px', borderRadius: '12px', fontSize: '0.8rem',
+                  backgroundColor: THEME.red, color: THEME.bg, marginRight: '6px', marginBottom: '4px',
+                  fontWeight: 'bold',
+                }} title="Это устройство было удалено из профилей">
+                  ⚠ Устройство удалено
                 </span>
               )}
               {step.duration && (
@@ -932,11 +1036,338 @@ function ActionStepsPanel() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// EQUIPMENT SETTINGS PANEL
+// ═══════════════════════════════════════════════════════════════
+
+const EQUIPMENT_TYPES = [
+  { value: 'airfryer', label: 'Аэрофритюрница', icon: '🔥' },
+  { value: 'processor', label: 'Кухонный комбайн', icon: '🍴' },
+  { value: 'breadmaker', label: 'Хлебопечка', icon: '🍞' },
+  { value: 'sandwichmaker', label: 'Сэндвичница', icon: '🥪' },
+  { value: 'blender', label: 'Блендер', icon: '🥤' },
+  { value: 'custom', label: 'Другое', icon: '⚙️' },
+];
+
+function EquipmentSettingsPanel({ onClose }) {
+  const [profiles, setProfiles] = useState(() => EquipmentProfiles.getAll());
+  const [editingId, setEditingId] = useState(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [form, setForm] = useState({ name: '', type: 'custom', capacity: '', maxTemp: '', bowlCapacity: '', modes: '', icon: '⚙️' });
+  const [formError, setFormError] = useState('');
+
+  const refreshProfiles = () => setProfiles(EquipmentProfiles.getAll());
+
+  const resetForm = () => {
+    setForm({ name: '', type: 'custom', capacity: '', maxTemp: '', bowlCapacity: '', modes: '', icon: '⚙️' });
+    setFormError('');
+    setShowAddForm(false);
+    setEditingId(null);
+  };
+
+  const openEdit = (profile) => {
+    setEditingId(profile.id);
+    setShowAddForm(true);
+    setFormError('');
+    setForm({
+      name: profile.name,
+      type: profile.type || 'custom',
+      capacity: profile.capacity || '',
+      maxTemp: profile.maxTemp != null ? String(profile.maxTemp) : '',
+      bowlCapacity: profile.bowlCapacity || '',
+      modes: (profile.modes || []).join(', '),
+      icon: profile.icon || '⚙️',
+    });
+  };
+
+  const handleSubmit = () => {
+    const name = form.name.trim();
+    if (!name) { setFormError('Название обязательно'); return; }
+    if (!form.type) { setFormError('Выберите тип устройства'); return; }
+
+    const profileData = {
+      name,
+      type: form.type,
+      capacity: form.capacity.trim() || null,
+      maxTemp: form.maxTemp ? Number(form.maxTemp) : null,
+      bowlCapacity: form.bowlCapacity.trim() || null,
+      modes: form.modes.split(',').map(s => s.trim()).filter(s => s.length > 0),
+      icon: form.icon.trim() || '⚙️',
+    };
+
+    if (editingId) {
+      EquipmentProfiles.update(editingId, profileData);
+    } else {
+      EquipmentProfiles.add(profileData);
+    }
+    refreshProfiles();
+    resetForm();
+  };
+
+  const handleDelete = (id) => {
+    if (EquipmentProfiles.remove(id)) {
+      refreshProfiles();
+    }
+    setConfirmDeleteId(null);
+  };
+
+  const typeInfo = (type) => EQUIPMENT_TYPES.find(t => t.value === type) || EQUIPMENT_TYPES.find(t => t.value === 'custom');
+
+  return (
+    <div style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1000,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{
+        backgroundColor: THEME.bg, border: `2px solid ${THEME.goldDim}`, borderRadius: '12px',
+        padding: '24px', maxWidth: '600px', width: '90%', maxHeight: '85vh', overflowY: 'auto',
+        color: THEME.text,
+      }}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2 style={{ fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: '1.3rem', margin: 0 }}>
+            ⚙️ Оборудование
+          </h2>
+          <button onClick={onClose} style={{
+            background: 'none', border: 'none', color: THEME.textDim, cursor: 'pointer',
+            fontSize: '1.5rem', lineHeight: '1',
+          }}>✕</button>
+        </div>
+
+        {/* Profile list */}
+        {profiles.map((profile) => {
+          const ti = typeInfo(profile.type);
+          return (
+            <div key={profile.id} style={{
+              ...STYLES.card, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '12px 16px',
+            }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '1.1rem' }}>{profile.icon || '⚙️'}</span>
+                  <span style={{ fontFamily: 'Georgia, serif', color: THEME.goldLight, fontWeight: 'bold', fontSize: '0.95rem' }}>
+                    {profile.name}
+                  </span>
+                  <span style={STYLES.badge(THEME.goldDim)}>{ti.label}</span>
+                  {profile.isDefault && (
+                    <span title="Встроенное устройство — нельзя удалить" style={{ color: THEME.textMuted, fontSize: '0.85rem' }}>🔒</span>
+                  )}
+                </div>
+                <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.75rem', color: THEME.textDim, marginTop: '2px' }}>
+                  {profile.capacity && <span style={{ marginRight: '10px' }}>Объём: {profile.capacity}</span>}
+                  {profile.maxTemp != null && <span style={{ marginRight: '10px' }}>Макс. темп: {profile.maxTemp}°C</span>}
+                  {profile.bowlCapacity && <span style={{ marginRight: '10px' }}>Чаша: {profile.bowlCapacity}</span>}
+                  {(profile.modes || []).length > 0 && <span>Режимы: {(profile.modes || []).join(', ')}</span>}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '12px' }}>
+                <button onClick={() => openEdit(profile)} style={{
+                  background: 'none', border: `1px solid ${THEME.border}`, borderRadius: '4px',
+                  color: THEME.textDim, cursor: 'pointer', padding: '4px 8px', fontSize: '0.85rem',
+                }} title="Редактировать">✏️</button>
+                {profile.isDefault ? (
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    width: '30px', height: '30px', color: THEME.textMuted, fontSize: '0.9rem',
+                  }} title="Встроенное устройство — нельзя удалить">🔒</span>
+                ) : (
+                  <button onClick={() => setConfirmDeleteId(profile.id)} style={{
+                    background: 'none', border: `1px solid ${THEME.border}`, borderRadius: '4px',
+                    color: THEME.red, cursor: 'pointer', padding: '4px 8px', fontSize: '0.85rem',
+                  }} title="Удалить">🗑️</button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Delete confirmation */}
+        {confirmDeleteId && (() => {
+          const p = profiles.find(x => x.id === confirmDeleteId);
+          return (
+            <div style={{
+              ...STYLES.card, borderColor: THEME.red, padding: '12px 16px',
+              marginTop: '8px', textAlign: 'center',
+            }}>
+              <p style={{ fontFamily: 'Georgia, serif', color: THEME.text, fontSize: '0.9rem', margin: '0 0 10px 0' }}>
+                Удалить "{p ? p.name : ''}"? Это действие нельзя отменить. Этапы, ссылающиеся на это устройство, покажут предупреждение.
+              </p>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                <button onClick={() => handleDelete(confirmDeleteId)} style={{
+                  padding: '6px 16px', borderRadius: '6px', border: 'none',
+                  backgroundColor: THEME.red, color: THEME.bg, cursor: 'pointer',
+                  fontFamily: 'Georgia, serif', fontSize: '0.85rem',
+                }}>Удалить</button>
+                <button onClick={() => setConfirmDeleteId(null)} style={{
+                  padding: '6px 16px', borderRadius: '6px', border: `1px solid ${THEME.border}`,
+                  backgroundColor: THEME.surface, color: THEME.textDim, cursor: 'pointer',
+                  fontFamily: 'Georgia, serif', fontSize: '0.85rem',
+                }}>Отмена</button>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Add / Edit form */}
+        {!showAddForm ? (
+          <button onClick={() => { resetForm(); setShowAddForm(true); }} style={{
+            marginTop: '16px', padding: '10px 20px', borderRadius: '8px',
+            border: `2px dashed ${THEME.goldDim}`, backgroundColor: 'transparent',
+            color: THEME.goldDim, cursor: 'pointer', fontFamily: 'Georgia, serif',
+            fontSize: '0.9rem', width: '100%',
+          }}>
+            + Добавить устройство
+          </button>
+        ) : (
+          <div style={{ ...STYLES.card, marginTop: '16px', borderColor: THEME.goldDim }}>
+            <h3 style={{ fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: '1rem', margin: '0 0 12px 0' }}>
+              {editingId ? 'Редактировать устройство' : 'Новое устройство'}
+            </h3>
+            {formError && (
+              <div style={{ color: THEME.red, fontSize: '0.8rem', marginBottom: '8px', fontFamily: 'Georgia, serif' }}>
+                {formError}
+              </div>
+            )}
+
+            {/* Name */}
+            <div style={{ marginBottom: '10px' }}>
+              <label style={{ display: 'block', fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.8rem', marginBottom: '4px' }}>
+                Название *
+              </label>
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="Например: Моя духовка"
+                style={{
+                  width: '100%', padding: '8px 10px', borderRadius: '6px',
+                  border: `1px solid ${THEME.border}`, backgroundColor: THEME.surface,
+                  color: THEME.text, fontFamily: 'Georgia, serif', fontSize: '0.9rem',
+                  boxSizing: 'border-box',
+                }} />
+            </div>
+
+            {/* Type */}
+            <div style={{ marginBottom: '10px' }}>
+              <label style={{ display: 'block', fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.8rem', marginBottom: '4px' }}>
+                Тип *
+              </label>
+              <select value={form.type} onChange={(e) => { const t = EQUIPMENT_TYPES.find(x => x.value === e.target.value); setForm({ ...form, type: e.target.value, icon: t ? t.icon : '⚙️' }); }}
+                style={{
+                  width: '100%', padding: '8px 10px', borderRadius: '6px',
+                  border: `1px solid ${THEME.border}`, backgroundColor: THEME.surface,
+                  color: THEME.text, fontFamily: 'Georgia, serif', fontSize: '0.9rem',
+                  boxSizing: 'border-box',
+                }}>
+                {EQUIPMENT_TYPES.map(t => (
+                  <option key={t.value} value={t.value}>{t.icon} {t.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Icon */}
+            <div style={{ marginBottom: '10px' }}>
+              <label style={{ display: 'block', fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.8rem', marginBottom: '4px' }}>
+                Иконка (emoji)
+              </label>
+              <input value={form.icon} onChange={(e) => setForm({ ...form, icon: e.target.value })}
+                placeholder="⚙️"
+                style={{
+                  width: '100%', padding: '8px 10px', borderRadius: '6px',
+                  border: `1px solid ${THEME.border}`, backgroundColor: THEME.surface,
+                  color: THEME.text, fontFamily: 'Georgia, serif', fontSize: '0.9rem',
+                  boxSizing: 'border-box',
+                }} />
+            </div>
+
+            {/* Capacity & BowlCapacity row */}
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.8rem', marginBottom: '4px' }}>
+                  Объём (L)
+                </label>
+                <input value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })}
+                  placeholder="6.2 L"
+                  style={{
+                    width: '100%', padding: '8px 10px', borderRadius: '6px',
+                    border: `1px solid ${THEME.border}`, backgroundColor: THEME.surface,
+                    color: THEME.text, fontFamily: 'Georgia, serif', fontSize: '0.9rem',
+                    boxSizing: 'border-box',
+                  }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.8rem', marginBottom: '4px' }}>
+                  Объём чаши (L)
+                </label>
+                <input value={form.bowlCapacity} onChange={(e) => setForm({ ...form, bowlCapacity: e.target.value })}
+                  placeholder="2.1 L"
+                  style={{
+                    width: '100%', padding: '8px 10px', borderRadius: '6px',
+                    border: `1px solid ${THEME.border}`, backgroundColor: THEME.surface,
+                    color: THEME.text, fontFamily: 'Georgia, serif', fontSize: '0.9rem',
+                    boxSizing: 'border-box',
+                  }} />
+              </div>
+            </div>
+
+            {/* MaxTemp */}
+            <div style={{ marginBottom: '10px' }}>
+              <label style={{ display: 'block', fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.8rem', marginBottom: '4px' }}>
+                Макс. температура (°C)
+              </label>
+              <input value={form.maxTemp} onChange={(e) => setForm({ ...form, maxTemp: e.target.value })}
+                placeholder="240"
+                type="number"
+                style={{
+                  width: '100%', padding: '8px 10px', borderRadius: '6px',
+                  border: `1px solid ${THEME.border}`, backgroundColor: THEME.surface,
+                  color: THEME.text, fontFamily: 'Georgia, serif', fontSize: '0.9rem',
+                  boxSizing: 'border-box',
+                }} />
+            </div>
+
+            {/* Modes */}
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ display: 'block', fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.8rem', marginBottom: '4px' }}>
+                Режимы (через запятую)
+              </label>
+              <input value={form.modes} onChange={(e) => setForm({ ...form, modes: e.target.value })}
+                placeholder="Air Fry, Roast, Bake"
+                style={{
+                  width: '100%', padding: '8px 10px', borderRadius: '6px',
+                  border: `1px solid ${THEME.border}`, backgroundColor: THEME.surface,
+                  color: THEME.text, fontFamily: 'Georgia, serif', fontSize: '0.9rem',
+                  boxSizing: 'border-box',
+                }} />
+            </div>
+
+            {/* Buttons */}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={handleSubmit} style={{
+                padding: '8px 20px', borderRadius: '6px', border: 'none',
+                backgroundColor: THEME.gold, color: THEME.bg, cursor: 'pointer',
+                fontFamily: 'Georgia, serif', fontSize: '0.9rem', fontWeight: 'bold',
+              }}>
+                {editingId ? 'Сохранить' : 'Добавить'}
+              </button>
+              <button onClick={resetForm} style={{
+                padding: '8px 20px', borderRadius: '6px', border: `1px solid ${THEME.border}`,
+                backgroundColor: THEME.surface, color: THEME.textDim, cursor: 'pointer',
+                fontFamily: 'Georgia, serif', fontSize: '0.9rem',
+              }}>Отмена</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
 // App — root component
 // ═══════════════════════════════════════════════════════════════
 
 function App() {
   const [activeTab, setActiveTab] = useState('ingredients');
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <div style={{
@@ -948,8 +1379,30 @@ function App() {
       fontFamily: 'Georgia, serif',
       color: THEME.text,
     }}>
-      <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
-      {activeTab === 'ingredients' ? <IngredientPanel /> : <ActionStepsPanel />}
+      {/* Header row: tabs + gear icon */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ flex: 1 }}>
+          <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
+        </div>
+        <button
+          onClick={() => setSettingsOpen(true)}
+          title="Настройки оборудования"
+          style={{
+            background: 'none', border: `1px solid ${THEME.border}`, borderRadius: '8px',
+            color: THEME.textDim, cursor: 'pointer', padding: '8px 10px', fontSize: '1.2rem',
+            lineHeight: '1', marginBottom: '20px',
+          }}
+        >⚙️</button>
+      </div>
+
+      {activeTab === 'ingredients'
+        ? <IngredientPanel />
+        : <ActionStepsPanel onOpenSettings={() => setSettingsOpen(true)} />
+      }
+
+      {settingsOpen && (
+        <EquipmentSettingsPanel onClose={() => setSettingsOpen(false)} />
+      )}
     </div>
   );
 }
