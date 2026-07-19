@@ -834,7 +834,7 @@ function runAccuracyVerification(steps) {
 // React hooks
 // ═══════════════════════════════════════════════════════════════
 
-const { useState, useEffect, useMemo } = React;
+const { useState, useEffect, useMemo, useRef } = React;
 
 // ═══════════════════════════════════════════════════════════════
 // Responsive breakpoint hook
@@ -860,6 +860,44 @@ function useWindowWidth() {
   }, []);
   const breakpoint = width <= 600 ? 'mobile' : width <= 900 ? 'tablet' : 'desktop';
   return { width, breakpoint };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ANIMATION CSS — injected once into document head
+// ═══════════════════════════════════════════════════════════════
+
+const ANIMATION_CSS = `
+@keyframes cv-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cv-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes cv-modal-enter { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+@keyframes cv-modal-exit { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.95); } }
+@keyframes cv-backdrop-enter { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cv-backdrop-exit { from { opacity: 1; } to { opacity: 0; } }
+@keyframes cv-badge-pulse { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .cv-animated, .cv-animated * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+`;
+
+// ═══════════════════════════════════════════════════════════════
+// Reduced-motion preference hook
+// ═══════════════════════════════════════════════════════════════
+
+function useReducedMotion() {
+  const [reduced, setReduced] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const handler = (e) => setReduced(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return reduced;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -948,6 +986,7 @@ const NECESSITY_COLORS = {
 function IngredientPanel() {
   const { breakpoint } = useWindowWidth();
   const isMobile = breakpoint === 'mobile';
+  const reduceMotion = useReducedMotion();
   const [expandedAll, setExpandedAll] = useState(false);
   const [expandedCards, setExpandedCards] = useState({});
 
@@ -1023,7 +1062,12 @@ function IngredientPanel() {
               {isExpanded ? 'Свернуть матрицу ▲' : 'Развернуть матрицу ▼'}
             </button>
 
-            {isExpanded && (
+            <div style={{
+              maxHeight: isExpanded ? '2000px' : '0px',
+              overflow: 'hidden',
+              opacity: isExpanded ? 1 : 0,
+              transition: reduceMotion ? 'none' : 'max-height 0.3s ease, opacity 0.3s ease',
+            }}>
               <div>
                 {/* 6-column matrix */}
                 <div style={{ overflowX: 'auto', marginBottom: '12px' }}>
@@ -1118,7 +1162,7 @@ function IngredientPanel() {
                   </div>
                 )}
               </div>
-            )}
+            </div>
           </div>
         );
       })}
@@ -1133,11 +1177,37 @@ function IngredientPanel() {
 function ActionStepsPanel({ onOpenSettings, verificationReport }) {
   const { breakpoint } = useWindowWidth();
   const isMobile = breakpoint === 'mobile';
+  const reduceMotion = useReducedMotion();
   const [expandedAll, setExpandedAll] = useState(false);
   const [expandedSteps, setExpandedSteps] = useState({});
   const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [modalClosing, setModalClosing] = useState(false);
   const [showEquipmentMap, setShowEquipmentMap] = useState(false);
   const [calibrations, setCalibrations] = useState(() => CalibrationStore.getAll());
+  const prevBadgeStatus = useRef(null);
+  const [badgePulse, setBadgePulse] = useState(false);
+
+  // Detect verification status degradation → trigger badge pulse
+  useEffect(() => {
+    if (!verificationReport) return;
+    const { errors, warnings } = verificationReport;
+    const status = errors.length > 0 ? 'red' : warnings.length > 0 ? 'amber' : 'green';
+    if (prevBadgeStatus.current && prevBadgeStatus.current !== status) {
+      // Degradation: green→amber, green→red, amber→red
+      const order = { green: 0, amber: 1, red: 2 };
+      if (order[status] > order[prevBadgeStatus.current]) {
+        setBadgePulse(true);
+        setTimeout(() => setBadgePulse(false), reduceMotion ? 0 : 300);
+      }
+    }
+    prevBadgeStatus.current = status;
+  }, [verificationReport, reduceMotion]);
+
+  const closeModal = () => {
+    if (reduceMotion) { setShowVerificationModal(false); return; }
+    setModalClosing(true);
+    setTimeout(() => { setShowVerificationModal(false); setModalClosing(false); }, 200);
+  };
 
   const cardPad = isMobile ? '12px' : '16px';
   const h2Size = isMobile ? '1.1rem' : '1.25rem';
@@ -1224,6 +1294,7 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
                   fontSize: '0.8rem',
                   fontWeight: 'bold',
                   transition: 'background-color 0.2s',
+                  animation: badgePulse && !reduceMotion ? 'cv-badge-pulse 300ms ease' : 'none',
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = badgeColor + '22'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
@@ -1352,8 +1423,14 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
               {isExpanded ? 'Скрыть детали ▲' : 'Показать детали ▼'}
             </button>
 
-            {isExpanded && (
-              <div style={{ marginLeft: '24px', marginTop: '12px' }}>
+            <div style={{
+              marginLeft: '24px', marginTop: isExpanded ? '12px' : '0px',
+              maxHeight: isExpanded ? '2000px' : '0px',
+              overflow: 'hidden',
+              opacity: isExpanded ? 1 : 0,
+              transition: reduceMotion ? 'none' : 'max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease',
+            }}>
+              <div style={{ marginTop: '0px' }}>
                 {/* Готовность */}
                 <div style={{
                   padding: '10px 14px', marginBottom: '8px',
@@ -1548,7 +1625,7 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
                   );
                 })()}
               </div>
-            )}
+            </div>
           </div>
         );
       })}
@@ -1695,18 +1772,20 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1000,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }} onClick={(e) => { if (e.target === e.currentTarget) setShowVerificationModal(false); }}>
+          animation: reduceMotion ? 'none' : (modalClosing ? 'cv-backdrop-exit 200ms ease forwards' : 'cv-backdrop-enter 200ms ease forwards'),
+        }} onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}>
           <div style={{
             backgroundColor: THEME.bg, border: `2px solid ${THEME.goldDim}`, borderRadius: '12px',
             padding: '24px', maxWidth: '650px', width: modalWidth, maxHeight: '85vh', overflowY: 'auto',
             color: THEME.text,
+            animation: reduceMotion ? 'none' : (modalClosing ? 'cv-modal-exit 200ms ease forwards' : 'cv-modal-enter 200ms ease forwards'),
           }}>
             {/* Modal header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 style={{ fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: '1.3rem', margin: 0 }}>
                 📋 Отчёт проверки точности
               </h2>
-              <button onClick={() => setShowVerificationModal(false)} style={{
+              <button onClick={closeModal} style={{
                 background: 'none', border: 'none', color: THEME.textDim, cursor: 'pointer',
                 fontSize: '1.5rem', lineHeight: '1',
               }}>✕</button>
@@ -1838,7 +1917,7 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
 
             {/* Close button */}
             <div style={{ marginTop: '20px', textAlign: 'right' }}>
-              <button onClick={() => setShowVerificationModal(false)} style={{
+              <button onClick={closeModal} style={{
                 padding: '8px 24px', borderRadius: '6px', border: 'none',
                 backgroundColor: THEME.gold, color: THEME.bg, cursor: 'pointer',
                 fontFamily: 'Georgia, serif', fontSize: '0.9rem', fontWeight: 'bold',
@@ -1869,6 +1948,7 @@ const EQUIPMENT_TYPES = [
 function EquipmentSettingsPanel({ onClose }) {
   const { breakpoint } = useWindowWidth();
   const isMobile = breakpoint === 'mobile';
+  const reduceMotion = useReducedMotion();
   const modalWidth = isMobile ? '95%' : '90%';
   const inputFontSize = isMobile ? '16px' : '0.9rem';
   const cardPad = isMobile ? '12px' : '16px';
@@ -1876,6 +1956,13 @@ function EquipmentSettingsPanel({ onClose }) {
   const [editingId, setEditingId] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [closing, setClosing] = useState(false);
+
+  const doClose = () => {
+    if (reduceMotion) { onClose(); return; }
+    setClosing(true);
+    setTimeout(() => { onClose(); }, 200);
+  };
   const [form, setForm] = useState({ name: '', type: 'custom', capacity: '', maxTemp: '', bowlCapacity: '', modes: '', icon: '⚙️' });
   const [formError, setFormError] = useState('');
 
@@ -1941,18 +2028,20 @@ function EquipmentSettingsPanel({ onClose }) {
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
       backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1000,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-    }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      animation: reduceMotion ? 'none' : (closing ? 'cv-backdrop-exit 200ms ease forwards' : 'cv-backdrop-enter 200ms ease forwards'),
+    }} onClick={(e) => { if (e.target === e.currentTarget) doClose(); }}>
       <div style={{
         backgroundColor: THEME.bg, border: `2px solid ${THEME.goldDim}`, borderRadius: '12px',
         padding: isMobile ? '16px' : '24px', maxWidth: '600px', width: modalWidth, maxHeight: '85vh', overflowY: 'auto',
         color: THEME.text,
+        animation: reduceMotion ? 'none' : (closing ? 'cv-modal-exit 200ms ease forwards' : 'cv-modal-enter 200ms ease forwards'),
       }}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h2 style={{ fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: '1.3rem', margin: 0 }}>
             ⚙️ Оборудование
           </h2>
-          <button onClick={onClose} style={{
+          <button onClick={doClose} style={{
             background: 'none', border: 'none', color: THEME.textDim, cursor: 'pointer',
             fontSize: '1.5rem', lineHeight: '1',
           }}>✕</button>
@@ -2191,14 +2280,36 @@ function EquipmentSettingsPanel({ onClose }) {
 function App() {
   const { breakpoint } = useWindowWidth();
   const isMobile = breakpoint === 'mobile';
+  const reduceMotion = useReducedMotion();
   const [activeTab, setActiveTab] = useState('ingredients');
+  const [tabVisible, setTabVisible] = useState('ingredients');
+  const [tabFading, setTabFading] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Inject animation CSS once
+  useEffect(() => {
+    if (document.getElementById('cv-animations')) return;
+    const style = document.createElement('style');
+    style.id = 'cv-animations';
+    style.textContent = ANIMATION_CSS;
+    document.head.appendChild(style);
+  }, []);
 
   // Run accuracy verification on mount (re-runs when settings change b/c equipment profiles may change)
   const verificationReport = useMemo(() => runAccuracyVerification(STEPS), [settingsOpen]);
 
+  const switchTab = (tab) => {
+    if (tab === tabVisible || tabFading) return;
+    setTabFading(true);
+    setTimeout(() => {
+      setActiveTab(tab);
+      setTabVisible(tab);
+      setTabFading(false);
+    }, reduceMotion ? 0 : 150);
+  };
+
   return (
-    <div style={{
+    <div className="cv-animated" style={{
       maxWidth: '800px',
       margin: '0 auto',
       padding: isMobile ? '12px 8px' : '24px 16px',
@@ -2211,7 +2322,7 @@ function App() {
       {/* Header row: tabs + gear icon */}
       <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '12px' }}>
         <div style={{ flex: 1 }}>
-          <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
+          <TabBar activeTab={tabVisible} onTabChange={switchTab} />
         </div>
         <button
           onClick={() => setSettingsOpen(true)}
@@ -2232,10 +2343,14 @@ function App() {
         >⚙️</button>
       </div>
 
-      {activeTab === 'ingredients'
-        ? <IngredientPanel />
-        : <ActionStepsPanel onOpenSettings={() => setSettingsOpen(true)} verificationReport={verificationReport} />
-      }
+      <div style={reduceMotion ? {} : {
+        animation: tabFading ? 'cv-fade-out 150ms ease forwards' : 'cv-fade-in 150ms ease forwards',
+      }}>
+        {activeTab === 'ingredients'
+          ? <IngredientPanel />
+          : <ActionStepsPanel onOpenSettings={() => setSettingsOpen(true)} verificationReport={verificationReport} />
+        }
+      </div>
 
       {settingsOpen && (
         <EquipmentSettingsPanel onClose={() => setSettingsOpen(false)} />
