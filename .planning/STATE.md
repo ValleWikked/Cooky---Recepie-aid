@@ -6,13 +6,12 @@
 
 ## Current Phase
 
-**Phase 1: Core Visualization Engine** — ✅ Complete
-- 01-project-scaffold: Theme, equipment constants, metric units, tab structure ✅
-- 02-ingredient-panel: Ingredient Analysis panel with 6-column matrix ✅
-- 03-action-steps-panel: Step-by-step Actions panel with accuracy tiers ✅
-- All 6 requirements (VIZ-01–VIZ-06) implemented
-- Artifact: `src/CookingVisualizer.jsx` (955 lines, self-contained)
-- Next: `/gsd:plan-phase 2` for Equipment Profiles & Accuracy System
+**Phase 2: Equipment Profiles & Accuracy System** — Planned (3 plans, 3 waves)
+- 01-equipment-profiles: Dynamic profile store with localStorage, CRUD, settings panel
+- 02-accuracy-verifier: 9-rule verification engine with status badge and violation report modal
+- 03-calibration-profiles: Per-device calibration records, equipment-to-step mapping, coverage badge
+- Covers VIZ-03 and VIZ-04
+- Next: `/gsd:execute-phase 2`
 
 ## Project Reference
 
@@ -27,3 +26,4 @@ See: .planning/PROJECT.md (updated 2026-07-19)
 - 2026-07-19: cooking-visualizer skill installed
 - 2026-07-19: Phase 1 planned — 3 plans covering VIZ-01 through VIZ-06
 - 2026-07-19: Phase 1 executed — CookingVisualizer.jsx built (955 lines, 2 panels, 10 ingredients, 10 steps)
+- 2026-07-19: Phase 2 planned — 3 plans for equipment profiles, accuracy verifier, calibration system

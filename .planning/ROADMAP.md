@@ -11,7 +11,7 @@
 
 ### Phase 2: Equipment Profiles & Accuracy System
 **Goal:** Build equipment defaults system and accuracy tier verification
-**Status:** Pending
+**Status:** Planned (3 plans)
 
 ### Phase 3: Polish & Documentation
 **Goal:** UI polish, testing against real recipes, documentation
