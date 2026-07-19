@@ -846,7 +846,7 @@ function runAccuracyVerification(steps) {
 // React hooks
 // ═══════════════════════════════════════════════════════════════
 
-const { useState, useEffect, useMemo, useRef } = React;
+const { useState, useEffect, useMemo, useCallback, useRef, memo } = React;
 
 // ═══════════════════════════════════════════════════════════════
 // Responsive breakpoint hook
@@ -891,6 +891,98 @@ const ANIMATION_CSS = `
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+`;
+
+// ═══════════════════════════════════════════════════════════════
+// PRINT CSS — injected once into document head
+// ═══════════════════════════════════════════════════════════════
+
+const PRINT_CSS = `
+@media print {
+  /* ── White background, black text base ── */
+  body, #root, .cv-animated,
+  div, span, p, h1, h2, h3, h4, h5, h6, td, th {
+    background-color: #fff !important;
+    color: #000 !important;
+  }
+
+  /* ── Card borders become thin gray ── */
+  div, table, th, td {
+    border-color: #ccc !important;
+  }
+
+  /* ── Hide interactive chrome: header row with tabs + gear ── */
+  .cv-animated > div:first-child {
+    display: none !important;
+  }
+
+  /* ── Hide expand/collapse toggle buttons ── */
+  button {
+    display: none !important;
+  }
+
+  /* ── Hide modals and backdrop overlays ── */
+  div[style*="position: fixed"],
+  div[style*="z-index: 1000"],
+  div[style*="z-index: 1100"] {
+    display: none !important;
+  }
+
+  /* ── Show all collapsed content ── */
+  div[style*="max-height"] {
+    max-height: none !important;
+    overflow: visible !important;
+    opacity: 1 !important;
+  }
+
+  /* ── Matrix full width, no horizontal scroll ── */
+  div[style*="overflow-x: auto"],
+  div[style*="overflowX: auto"] {
+    overflow: visible !important;
+    max-width: 100% !important;
+  }
+
+  /* ── Reset inline overflow hidden on the root container ── */
+  div[style*="overflow-x: hidden"],
+  div[style*="overflowX: hidden"] {
+    overflow: visible !important;
+  }
+
+  /* ── Hide scrollable containers ── */
+  div[style*="overflow-y: auto"],
+  div[style*="overflowY: auto"] {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  /* ── Print header via body::before ── */
+  body::before {
+    content: "Cooking Visualizer — Разбор рецепта" !important;
+    display: block !important;
+    font-family: Georgia, serif !important;
+    font-size: 18pt !important;
+    font-weight: bold !important;
+    color: #000 !important;
+    text-align: center !important;
+    padding: 20px 0 10px 0 !important;
+    border-bottom: 2px solid #ccc !important;
+    margin-bottom: 20px !important;
+  }
+
+  /* ── Font-size base ── */
+  body, body * {
+    font-size: 11pt !important;
+  }
+  h1, h2, h3, h4 {
+    font-size: 14pt !important;
+  }
+
+  /* ── Animations off ── */
+  * {
+    animation: none !important;
+    transition: none !important;
   }
 }
 `;
@@ -1000,7 +1092,7 @@ function AccuracyTag({ accuracy }) {
 // TabBar component
 // ═══════════════════════════════════════════════════════════════
 
-function TabBar({ activeTab, onTabChange }) {
+const TabBar = memo(function TabBar({ activeTab, onTabChange }) {
   const { breakpoint } = useWindowWidth();
   const isMobile = breakpoint === 'mobile';
   const tabs = [
@@ -1028,7 +1120,7 @@ function TabBar({ activeTab, onTabChange }) {
       })}
     </div>
   );
-}
+});
 
 // ═══════════════════════════════════════════════════════════════
 // InlineIcon — tiny inline icon for detail blocks
@@ -1037,6 +1129,142 @@ function TabBar({ activeTab, onTabChange }) {
 function InlineIcon({ char, color }) {
   return <span style={{ marginRight: '6px', color: color || THEME.textDim, fontWeight: 'bold' }}>{char}</span>;
 }
+
+// ═══════════════════════════════════════════════════════════════
+// IngredientCard — memoized card sub-component
+// ═══════════════════════════════════════════════════════════════
+
+const IngredientCard = memo(function IngredientCard({ ing, index, isExpanded, isMobile, cardPad, cellMinWidth, matrixMinWidth, ingNameSize, reduceMotion, onToggle }) {
+  const necColor = NECESSITY_COLORS[ing.necessity] || THEME.textDim;
+  const zoneType = ing.toleranceZone.type;
+  return (
+    <div style={{ ...STYLES.card, padding: cardPad }}>
+      {/* Card header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+        <div>
+          <span style={{ fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: ingNameSize, fontWeight: 'bold', marginRight: '8px' }}>
+            {ing.name}
+          </span>
+          <span style={STYLES.badge(necColor)}>{ing.necessity}</span>
+        </div>
+        <span style={{ fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.9rem' }}>
+          {ing.amount}
+          {ing.empirical ? ' ?' : ''}
+        </span>
+      </div>
+      {/* Role */}
+      <p style={{ fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.85rem', margin: '0 0 8px 0' }}>
+        {ing.role}
+      </p>
+      {/* Toggle button */}
+      <button onClick={() => onToggle(index)} style={{
+        padding: '4px 12px', borderRadius: '4px', border: `1px solid ${THEME.border}`,
+        backgroundColor: 'transparent', color: THEME.goldDim, cursor: 'pointer',
+        fontSize: '0.75rem', fontFamily: 'Georgia, serif', marginBottom: isExpanded ? '12px' : '0',
+      }}>
+        {isExpanded ? 'Свернуть матрицу ▲' : 'Развернуть матрицу ▼'}
+      </button>
+      <div style={{
+        maxHeight: isExpanded ? '2000px' : '0px',
+        overflow: 'hidden',
+        opacity: isExpanded ? 1 : 0,
+        transition: reduceMotion ? 'none' : 'max-height 0.3s ease, opacity 0.3s ease',
+      }}>
+        <div>
+          {/* 6-column matrix */}
+          <div style={{ overflowX: 'auto', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', minWidth: matrixMinWidth, border: `1px solid ${THEME.border}`, borderRadius: '6px', overflow: 'hidden' }}>
+              {MATRIX_COLS.map((col, ci) => (
+                <div key={ci} style={{ ...STYLES.matrixCell(ci === 3), minWidth: cellMinWidth }}>
+                  <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.75rem', color: THEME.textMuted, marginBottom: '4px' }}>
+                    {col.label}
+                    <div style={{ fontSize: '0.6rem' }}>{col.desc}</div>
+                  </div>
+                  <div style={{
+                    fontFamily: 'Georgia, serif', fontSize: '0.8rem', fontWeight: 'bold',
+                    color: ci === 3 ? THEME.goldLight : THEME.text,
+                    marginBottom: '2px',
+                  }}>
+                    {ing.matrix[ci].verdict}
+                  </div>
+                  <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.7rem', color: THEME.textDim, lineHeight: '1.3' }}>
+                    {ing.matrix[ci].consequence}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Tolerance zone bar */}
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.7rem', color: THEME.textMuted, marginBottom: '4px' }}>
+              Зона допуска: {ing.toleranceZone.description}
+            </div>
+            <div style={{ display: 'flex', height: '6px', borderRadius: '3px', overflow: 'hidden', backgroundColor: THEME.border }}>
+              {(() => {
+                const ranges = {
+                  'base': [0, 0, 0, 1, 0, 0],
+                  'narrow_both': [0, 0, 0, 1, 0, 0],
+                  'narrow_above': [1, 1, 1, 1, 0, 0],
+                  'wide_below': [0, 0, 1, 1, 1, 1],
+                  'wide': [1, 1, 1, 1, 1, 1],
+                  'very_wide': [1, 1, 1, 1, 1, 1],
+                  'moderate': [0, 1, 1, 1, 1, 0],
+                };
+                const zone = ranges[zoneType] || [0, 0, 0, 1, 0, 0];
+                return zone.map((inZone, zi) => (
+                  <div key={zi} style={{ flex: 1, backgroundColor: inZone ? THEME.green : 'transparent', borderRight: zi < 5 ? `1px solid ${THEME.border}` : 'none' }} />
+                ));
+              })()}
+            </div>
+          </div>
+          {/* Variants */}
+          {ing.variants.length > 0 && (
+            <div style={{ marginBottom: '10px' }}>
+              <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.75rem', color: THEME.goldDim, fontWeight: 'bold', marginBottom: '4px' }}>
+                Варианты формы:
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                {ing.variants.map((v, vi) => (
+                  <span key={vi} title={v.description} style={{
+                    ...STYLES.chip, backgroundColor: THEME.card, border: `1px solid ${THEME.goldDim}`,
+                    color: THEME.textDim, fontSize: '0.7rem', cursor: 'default',
+                  }}>
+                    {v.label} — {v.quantity}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          {/* Substitutions */}
+          {ing.substitutions.length > 0 && (
+            <div>
+              <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.75rem', color: THEME.goldDim, fontWeight: 'bold', marginBottom: '4px' }}>
+                Варианты и замены:
+              </div>
+              {ing.substitutions.map((sub, si) => (
+                <div key={si} style={{
+                  padding: '8px 10px', marginBottom: '4px',
+                  backgroundColor: THEME.surface, borderRadius: '4px',
+                  borderLeft: `3px solid ${sub.name === 'Пропуск' ? THEME.amber : THEME.green}`,
+                }}>
+                  <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.8rem', color: THEME.text, fontWeight: 'bold' }}>
+                    {sub.name}
+                  </div>
+                  <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.7rem', color: THEME.textDim, marginTop: '2px' }}>
+                    {sub.description}
+                  </div>
+                  <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.65rem', color: THEME.textMuted, marginTop: '2px', fontStyle: 'italic' }}>
+                    {sub.note}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+});
 
 // ═══════════════════════════════════════════════════════════════
 // INGREDIENT PANEL (Panel 1)
@@ -1062,7 +1290,7 @@ function IngredientPanel() {
   const h2Size = isMobile ? '1.1rem' : '1.25rem';
   const ingNameSize = isMobile ? '0.95rem' : '1.05rem';
 
-  const toggleAll = () => {
+  const toggleAll = useCallback(() => {
     if (expandedAll) {
       setExpandedAll(false);
       setExpandedCards({});
@@ -1072,11 +1300,11 @@ function IngredientPanel() {
       INGREDIENTS.forEach((_, i) => { all[i] = true; });
       setExpandedCards(all);
     }
-  };
+  }, [expandedAll]);
 
-  const toggleCard = (i) => {
+  const toggleCard = useCallback((i) => {
     setExpandedCards((prev) => ({ ...prev, [i]: !prev[i] }));
-  };
+  }, []);
 
   return (
     <div>
@@ -1106,150 +1334,312 @@ function IngredientPanel() {
           </p>
         </div>
       ) : (
-      INGREDIENTS.map((ing, i) => {
-        const isExpanded = expandedCards[i] || false;
-        const necColor = NECESSITY_COLORS[ing.necessity] || THEME.textDim;
-        const zoneType = ing.toleranceZone.type;
-
-        return (
-          <div key={i} style={{ ...STYLES.card, padding: cardPad }}>
-            {/* Card header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-              <div>
-                <span style={{ fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: ingNameSize, fontWeight: 'bold', marginRight: '8px' }}>
-                  {ing.name}
-                </span>
-                <span style={STYLES.badge(necColor)}>{ing.necessity}</span>
-              </div>
-              <span style={{ fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.9rem' }}>
-                {ing.amount}
-                {ing.empirical ? ' ?' : ''}
-              </span>
-            </div>
-
-            {/* Role */}
-            <p style={{ fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.85rem', margin: '0 0 8px 0' }}>
-              {ing.role}
-            </p>
-
-            {/* Toggle button */}
-            <button onClick={() => toggleCard(i)} style={{
-              padding: '4px 12px', borderRadius: '4px', border: `1px solid ${THEME.border}`,
-              backgroundColor: 'transparent', color: THEME.goldDim, cursor: 'pointer',
-              fontSize: '0.75rem', fontFamily: 'Georgia, serif', marginBottom: isExpanded ? '12px' : '0',
-            }}>
-              {isExpanded ? 'Свернуть матрицу ▲' : 'Развернуть матрицу ▼'}
-            </button>
-
-            <div style={{
-              maxHeight: isExpanded ? '2000px' : '0px',
-              overflow: 'hidden',
-              opacity: isExpanded ? 1 : 0,
-              transition: reduceMotion ? 'none' : 'max-height 0.3s ease, opacity 0.3s ease',
-            }}>
-              <div>
-                {/* 6-column matrix */}
-                <div style={{ overflowX: 'auto', marginBottom: '12px' }}>
-                  <div style={{ display: 'flex', minWidth: matrixMinWidth, border: `1px solid ${THEME.border}`, borderRadius: '6px', overflow: 'hidden' }}>
-                    {MATRIX_COLS.map((col, ci) => (
-                      <div key={ci} style={{ ...STYLES.matrixCell(ci === 3), minWidth: cellMinWidth }}>
-                        <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.75rem', color: THEME.textMuted, marginBottom: '4px' }}>
-                          {col.label}
-                          <div style={{ fontSize: '0.6rem' }}>{col.desc}</div>
-                        </div>
-                        <div style={{
-                          fontFamily: 'Georgia, serif', fontSize: '0.8rem', fontWeight: 'bold',
-                          color: ci === 3 ? THEME.goldLight : THEME.text,
-                          marginBottom: '2px',
-                        }}>
-                          {ing.matrix[ci].verdict}
-                        </div>
-                        <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.7rem', color: THEME.textDim, lineHeight: '1.3' }}>
-                          {ing.matrix[ci].consequence}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Tolerance zone bar */}
-                <div style={{ marginBottom: '12px' }}>
-                  <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.7rem', color: THEME.textMuted, marginBottom: '4px' }}>
-                    Зона допуска: {ing.toleranceZone.description}
-                  </div>
-                  <div style={{ display: 'flex', height: '6px', borderRadius: '3px', overflow: 'hidden', backgroundColor: THEME.border }}>
-                    {(() => {
-                      const ranges = {
-                        'base': [0, 0, 0, 1, 0, 0],
-                        'narrow_both': [0, 0, 0, 1, 0, 0],
-                        'narrow_above': [1, 1, 1, 1, 0, 0],
-                        'wide_below': [0, 0, 1, 1, 1, 1],
-                        'wide': [1, 1, 1, 1, 1, 1],
-                        'very_wide': [1, 1, 1, 1, 1, 1],
-                        'moderate': [0, 1, 1, 1, 1, 0],
-                      };
-                      const zone = ranges[zoneType] || [0, 0, 0, 1, 0, 0];
-                      return zone.map((inZone, zi) => (
-                        <div key={zi} style={{ flex: 1, backgroundColor: inZone ? THEME.green : 'transparent', borderRight: zi < 5 ? `1px solid ${THEME.border}` : 'none' }} />
-                      ));
-                    })()}
-                  </div>
-                </div>
-
-                {/* Variants */}
-                {ing.variants.length > 0 && (
-                  <div style={{ marginBottom: '10px' }}>
-                    <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.75rem', color: THEME.goldDim, fontWeight: 'bold', marginBottom: '4px' }}>
-                      Варианты формы:
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                      {ing.variants.map((v, vi) => (
-                        <span key={vi} title={v.description} style={{
-                          ...STYLES.chip, backgroundColor: THEME.card, border: `1px solid ${THEME.goldDim}`,
-                          color: THEME.textDim, fontSize: '0.7rem', cursor: 'default',
-                        }}>
-                          {v.label} — {v.quantity}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Substitutions */}
-                {ing.substitutions.length > 0 && (
-                  <div>
-                    <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.75rem', color: THEME.goldDim, fontWeight: 'bold', marginBottom: '4px' }}>
-                      Варианты и замены:
-                    </div>
-                    {ing.substitutions.map((sub, si) => (
-                      <div key={si} style={{
-                        padding: '8px 10px', marginBottom: '4px',
-                        backgroundColor: THEME.surface, borderRadius: '4px',
-                        borderLeft: `3px solid ${sub.name === 'Пропуск' ? THEME.amber : THEME.green}`,
-                      }}>
-                        <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.8rem', color: THEME.text, fontWeight: 'bold' }}>
-                          {sub.name}
-                        </div>
-                        <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.7rem', color: THEME.textDim, marginTop: '2px' }}>
-                          {sub.description}
-                        </div>
-                        <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.65rem', color: THEME.textMuted, marginTop: '2px', fontStyle: 'italic' }}>
-                          {sub.note}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })}
-      )
+      INGREDIENTS.map((ing, i) => (
+        <IngredientCard
+          key={i}
+          ing={ing}
+          index={i}
+          isExpanded={expandedCards[i] || false}
+          isMobile={isMobile}
+          cardPad={cardPad}
+          cellMinWidth={cellMinWidth}
+          matrixMinWidth={matrixMinWidth}
+          ingNameSize={ingNameSize}
+          reduceMotion={reduceMotion}
+          onToggle={toggleCard}
+        />
+      ))
       }
     </div>
   );
 }
+
+// ═══════════════════════════════════════════════════════════════
+// StepCard — memoized step card sub-component
+// ═══════════════════════════════════════════════════════════════
+
+const StepCard = memo(function StepCard({ step, index, isExpanded, cardPad, isMobile, inputFontSize, reduceMotion, editingCal, calFormState, setEditingCal, setCalFormState, onToggle, onOpenSettings, refreshCalibrations }) {
+  const eq = step.equipment ? EquipmentProfiles.getById(step.equipment) : null;
+  const deletedEq = step.equipment && !eq;
+  const isAirFryer = step.equipment === 'NinjaMAXPRO';
+
+  return (
+    <div key={index} id={`step-card-${step.id}`} style={{ ...STYLES.card, padding: cardPad, marginTop: '12px', position: 'relative' }}>
+      {/* Step number badge */}
+      <div style={{
+        position: 'absolute', top: '-10px', left: '-10px',
+        width: '32px', height: '32px', borderRadius: '50%',
+        backgroundColor: THEME.gold, color: THEME.bg,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontFamily: 'Georgia, serif', fontSize: '0.85rem', fontWeight: 'bold',
+        border: `2px solid ${THEME.card}`,
+      }}>
+        {step.id}
+      </div>
+
+      {/* Step title */}
+      <h3 style={{
+        fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: '1rem',
+        margin: '4px 0 6px 24px',
+      }}>
+        {step.title}
+      </h3>
+
+      {/* Description */}
+      <p style={{ fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.85rem', margin: '0 0 10px 24px', lineHeight: '1.5' }}>
+        {step.description}
+      </p>
+
+      {/* Chips row */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', marginLeft: '24px', marginBottom: '8px', gap: '4px' }}>
+        {eq && (
+          <span
+            style={{ ...STYLES.chip, cursor: 'pointer' }}
+            title={`${eq.name} · ${step.equipmentSetting} — нажмите для настроек оборудования`}
+            onClick={onOpenSettings}
+          >
+            {eq.icon ? `${eq.icon} ` : ''}{eq.name}{step.equipmentSetting ? ` · ${step.equipmentSetting}` : ''}
+          </span>
+        )}
+        {deletedEq && (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: '4px',
+            padding: '3px 10px', borderRadius: '12px', fontSize: '0.8rem',
+            backgroundColor: THEME.red, color: THEME.bg, marginRight: '6px', marginBottom: '4px',
+            fontWeight: 'bold',
+          }} title="Это устройство было удалено из профилей">
+            ⚠ Устройство удалено
+          </span>
+        )}
+        {step.duration && (
+          <span style={STYLES.chip}>
+            ⏱ {step.duration.value}
+            <AccuracyTag accuracy={step.duration.accuracy} />
+          </span>
+        )}
+        {step.temperature && (
+          <span style={STYLES.chip}>
+            🌡 {step.temperature.value}
+            <AccuracyTag accuracy={step.temperature.accuracy} />
+          </span>
+        )}
+      </div>
+
+      {/* Expand toggle */}
+      <button onClick={() => onToggle(index)} style={{
+        padding: '4px 12px', borderRadius: '4px', border: `1px solid ${THEME.border}`,
+        backgroundColor: 'transparent', color: THEME.goldDim, cursor: 'pointer',
+        fontSize: '0.75rem', fontFamily: 'Georgia, serif', marginLeft: '24px',
+      }}>
+        {isExpanded ? 'Скрыть детали ▲' : 'Показать детали ▼'}
+      </button>
+
+      <div style={{
+        marginLeft: '24px', marginTop: isExpanded ? '12px' : '0px',
+        maxHeight: isExpanded ? '2000px' : '0px',
+        overflow: 'hidden',
+        opacity: isExpanded ? 1 : 0,
+        transition: reduceMotion ? 'none' : 'max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease',
+      }}>
+        <div style={{ marginTop: '0px' }}>
+          {/* Готовность */}
+          <div style={{
+            padding: '10px 14px', marginBottom: '8px',
+            borderLeft: `3px solid ${THEME.green}`, backgroundColor: THEME.surface,
+            borderRadius: '0 6px 6px 0',
+          }}>
+            <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.8rem', color: THEME.green, fontWeight: 'bold', marginBottom: '4px' }}>
+              <InlineIcon char="✓" color={THEME.green} /> Готовность
+            </div>
+            <div style={{ fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.8rem', lineHeight: '1.4' }}>
+              {step.doneWhen}
+            </div>
+          </div>
+
+          {/* Если пропустить */}
+          <div style={{
+            padding: '10px 14px', marginBottom: '8px',
+            borderLeft: `3px solid ${THEME.red}`, backgroundColor: THEME.surface,
+            borderRadius: '0 6px 6px 0',
+          }}>
+            <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.8rem', color: THEME.red, fontWeight: 'bold', marginBottom: '4px' }}>
+              <InlineIcon char="✗" color={THEME.red} /> Если пропустить
+            </div>
+            <div style={{ fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.8rem', lineHeight: '1.4' }}>
+              {step.ifSkipped}
+            </div>
+          </div>
+
+          {/* Calibration (air fryer only) */}
+          {isAirFryer && step.calibration && (
+            <div style={{
+              padding: '10px 14px',
+              borderLeft: `3px solid ${THEME.amber}`, backgroundColor: THEME.surface,
+              borderRadius: '0 6px 6px 0',
+            }}>
+              <div style={{ fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.8rem', lineHeight: '1.4' }}>
+                {step.calibration}
+              </div>
+            </div>
+          )}
+
+          {/* User calibration UI (air fryer steps only) */}
+          {isAirFryer && step.calibration && (() => {
+            const cal = CalibrationStore.get('NinjaMAXPRO', step.id);
+            const calKey = `NinjaMAXPRO::${step.id}`;
+            const isEditing = editingCal[calKey] || false;
+            const form = calFormState[calKey] || { optimalTime: cal ? cal.optimalTime : '', optimalTemp: cal ? cal.optimalTemp : '', notes: cal ? cal.notes : '' };
+
+            const updateForm = (field, value) => {
+              setCalFormState(prev => ({ ...prev, [calKey]: { ...prev[calKey], [field]: value } }));
+            };
+
+            const handleSaveCal = () => {
+              CalibrationStore.set('NinjaMAXPRO', step.id, form);
+              setEditingCal(prev => ({ ...prev, [calKey]: false }));
+              setCalFormState(prev => { const n = { ...prev }; delete n[calKey]; return n; });
+              refreshCalibrations();
+            };
+
+            const handleResetCal = () => {
+              const data = CalibrationStore._data;
+              delete data[calKey];
+              CalibrationStore._save();
+              setCalFormState(prev => { const n = { ...prev }; delete n[calKey]; return n; });
+              refreshCalibrations();
+            };
+
+            const startEdit = () => {
+              setCalFormState(prev => ({
+                ...prev,
+                [calKey]: { optimalTime: cal ? cal.optimalTime : '', optimalTemp: cal ? cal.optimalTemp : '', notes: cal ? cal.notes : '' }
+              }));
+              setEditingCal(prev => ({ ...prev, [calKey]: true }));
+            };
+
+            return (
+              <div style={{
+                padding: '12px 14px', marginBottom: '8px',
+                borderLeft: `3px solid ${THEME.blue}`, backgroundColor: THEME.surface,
+                borderRadius: '0 6px 6px 0',
+              }}>
+                <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.8rem', color: THEME.blue, fontWeight: 'bold', marginBottom: '8px' }}>
+                  📝 Моя калибровка
+                </div>
+
+                {cal && !isEditing ? (
+                  /* READ-ONLY saved calibration */
+                  <div>
+                    <div style={{ fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.8rem', lineHeight: '1.6' }}>
+                      {cal.optimalTime && <span style={{ marginRight: '16px' }}>⏱ <strong>{cal.optimalTime}</strong></span>}
+                      {cal.optimalTemp && <span style={{ marginRight: '16px' }}>🌡 <strong>{cal.optimalTemp}</strong></span>}
+                    </div>
+                    {cal.notes && (
+                      <div style={{ fontFamily: 'Georgia, serif', color: THEME.textMuted, fontSize: '0.75rem', marginTop: '4px', fontStyle: 'italic' }}>
+                        {cal.notes}
+                      </div>
+                    )}
+                    <div style={{ fontFamily: 'Georgia, serif', color: THEME.textMuted, fontSize: '0.7rem', marginTop: '6px' }}>
+                      Откалибровано: {new Date(cal.calibratedAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                      <button onClick={startEdit} style={{
+                        padding: '4px 12px', borderRadius: '4px', border: `1px solid ${THEME.border}`,
+                        backgroundColor: THEME.surface, color: THEME.textDim, cursor: 'pointer',
+                        fontSize: '0.75rem', fontFamily: 'Georgia, serif',
+                      }}>
+                        ✏️ Редактировать
+                      </button>
+                      <button onClick={handleResetCal} style={{
+                        padding: '4px 12px', borderRadius: '4px', border: `1px solid ${THEME.border}`,
+                        backgroundColor: 'transparent', color: THEME.red, cursor: 'pointer',
+                        fontSize: '0.75rem', fontFamily: 'Georgia, serif',
+                      }}>
+                        Сбросить
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* EDIT / CREATE form */
+                  <div>
+                    <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '10px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                      <div style={{ flex: '1 1 120px' }}>
+                        <label style={{ display: 'block', fontFamily: 'Georgia, serif', color: THEME.textMuted, fontSize: '0.7rem', marginBottom: '2px' }}>
+                          ⏱ Опт. время
+                        </label>
+                        <input
+                          value={form.optimalTime}
+                          onChange={(e) => updateForm('optimalTime', e.target.value)}
+                          placeholder="12–14 мин"
+                          style={{
+                            width: '100%', padding: '5px 8px', borderRadius: '4px',
+                            border: `1px solid ${THEME.border}`, backgroundColor: THEME.card,
+                            color: THEME.text, fontFamily: 'Georgia, serif', fontSize: inputFontSize,
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </div>
+                      <div style={{ flex: '1 1 120px' }}>
+                        <label style={{ display: 'block', fontFamily: 'Georgia, serif', color: THEME.textMuted, fontSize: '0.7rem', marginBottom: '2px' }}>
+                          🌡 Опт. температура
+                        </label>
+                        <input
+                          value={form.optimalTemp}
+                          onChange={(e) => updateForm('optimalTemp', e.target.value)}
+                          placeholder="195 °C"
+                          style={{
+                            width: '100%', padding: '5px 8px', borderRadius: '4px',
+                            border: `1px solid ${THEME.border}`, backgroundColor: THEME.card,
+                            color: THEME.text, fontFamily: 'Georgia, serif', fontSize: inputFontSize,
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: '8px' }}>
+                      <label style={{ display: 'block', fontFamily: 'Georgia, serif', color: THEME.textMuted, fontSize: '0.7rem', marginBottom: '2px' }}>
+                        📋 Заметки
+                      </label>
+                      <input
+                        value={form.notes}
+                        onChange={(e) => updateForm('notes', e.target.value)}
+                        placeholder="Первая партия — 12 мин, вторая — 14 мин"
+                        style={{
+                          width: '100%', padding: '5px 8px', borderRadius: '4px',
+                          border: `1px solid ${THEME.border}`, backgroundColor: THEME.card,
+                          color: THEME.text, fontFamily: 'Georgia, serif', fontSize: inputFontSize,
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={handleSaveCal} style={{
+                        padding: '5px 16px', borderRadius: '4px', border: 'none',
+                        backgroundColor: THEME.green, color: THEME.bg, cursor: 'pointer',
+                        fontSize: '0.8rem', fontFamily: 'Georgia, serif', fontWeight: 'bold',
+                      }}>
+                        💾 Сохранить
+                      </button>
+                      {cal && (
+                        <button onClick={() => setEditingCal(prev => ({ ...prev, [calKey]: false }))} style={{
+                          padding: '5px 14px', borderRadius: '4px', border: `1px solid ${THEME.border}`,
+                          backgroundColor: THEME.surface, color: THEME.textDim, cursor: 'pointer',
+                          fontSize: '0.8rem', fontFamily: 'Georgia, serif',
+                        }}>
+                          Отмена
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </div>
+      </div>
+    </div>
+  );
+});
 
 // ═══════════════════════════════════════════════════════════════
 // ACTION STEPS PANEL (Panel 2)
@@ -1284,11 +1674,11 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
     prevBadgeStatus.current = status;
   }, [verificationReport, reduceMotion]);
 
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     if (reduceMotion) { setShowVerificationModal(false); return; }
     setModalClosing(true);
     setTimeout(() => { setShowVerificationModal(false); setModalClosing(false); }, 200);
-  };
+  }, [reduceMotion]);
 
   const cardPad = isMobile ? '12px' : '16px';
   const h2Size = isMobile ? '1.1rem' : '1.25rem';
@@ -1297,7 +1687,7 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
   const [editingCal, setEditingCal] = useState({}); // key -> bool
   const [calFormState, setCalFormState] = useState({}); // calKey -> {optimalTime,optimalTemp,notes}
 
-  const toggleAll = () => {
+  const toggleAll = useCallback(() => {
     if (expandedAll) {
       setExpandedAll(false);
       setExpandedSteps({});
@@ -1307,20 +1697,22 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
       STEPS.forEach((_, i) => { all[i] = true; });
       setExpandedSteps(all);
     }
-  };
+  }, [expandedAll]);
 
-  const toggleStep = (i) => {
+  const toggleStep = useCallback((i) => {
     setExpandedSteps((prev) => ({ ...prev, [i]: !prev[i] }));
-  };
+  }, []);
 
-  const refreshCalibrations = () => setCalibrations(CalibrationStore.getAll());
+  const refreshCalibrations = useCallback(() => setCalibrations(CalibrationStore.getAll()), []);
 
-  // Calibration coverage stats
-  const calibratableSteps = STEPS.filter(s => s.equipment === 'NinjaMAXPRO' && s.calibration);
-  const calibratedCount = calibratableSteps.filter(s => CalibrationStore.get('NinjaMAXPRO', s.id)).length;
-  const calCoverageBadge = calibratableSteps.length > 0
-    ? { count: calibratedCount, total: calibratableSteps.length, allDone: calibratedCount === calibratableSteps.length }
-    : null;
+  // Calibration coverage stats — memoized
+  const calCoverageBadge = useMemo(() => {
+    const calibratableSteps = STEPS.filter(s => s.equipment === 'NinjaMAXPRO' && s.calibration);
+    const calibratedCount = calibratableSteps.filter(s => CalibrationStore.get('NinjaMAXPRO', s.id)).length;
+    return calibratableSteps.length > 0
+      ? { count: calibratedCount, total: calibratableSteps.length, allDone: calibratedCount === calibratableSteps.length }
+      : null;
+  }, [calibrations]);
 
   return (
     <div>
@@ -1439,293 +1831,26 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
           </p>
         </div>
       ) : (
-      /* Step cards */
-      STEPS.map((step, i) => {
-        const isExpanded = expandedSteps[i] || false;
-        const eq = step.equipment ? EquipmentProfiles.getById(step.equipment) : null;
-        const deletedEq = step.equipment && !eq;
-        const isAirFryer = step.equipment === 'NinjaMAXPRO';
-
-        return (
-          <div key={i} id={`step-card-${step.id}`} style={{ ...STYLES.card, padding: cardPad, marginTop: '12px', position: 'relative' }}>
-            {/* Step number badge */}
-            <div style={{
-              position: 'absolute', top: '-10px', left: '-10px',
-              width: '32px', height: '32px', borderRadius: '50%',
-              backgroundColor: THEME.gold, color: THEME.bg,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: 'Georgia, serif', fontSize: '0.85rem', fontWeight: 'bold',
-              border: `2px solid ${THEME.card}`,
-            }}>
-              {step.id}
-            </div>
-
-            {/* Step title */}
-            <h3 style={{
-              fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: '1rem',
-              margin: '4px 0 6px 24px',
-            }}>
-              {step.title}
-            </h3>
-
-            {/* Description */}
-            <p style={{ fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.85rem', margin: '0 0 10px 24px', lineHeight: '1.5' }}>
-              {step.description}
-            </p>
-
-            {/* Chips row */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', marginLeft: '24px', marginBottom: '8px', gap: '4px' }}>
-              {eq && (
-                <span
-                  style={{ ...STYLES.chip, cursor: 'pointer' }}
-                  title={`${eq.name} · ${step.equipmentSetting} — нажмите для настроек оборудования`}
-                  onClick={onOpenSettings}
-                >
-                  {eq.icon ? `${eq.icon} ` : ''}{eq.name}{step.equipmentSetting ? ` · ${step.equipmentSetting}` : ''}
-                </span>
-              )}
-              {deletedEq && (
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '4px',
-                  padding: '3px 10px', borderRadius: '12px', fontSize: '0.8rem',
-                  backgroundColor: THEME.red, color: THEME.bg, marginRight: '6px', marginBottom: '4px',
-                  fontWeight: 'bold',
-                }} title="Это устройство было удалено из профилей">
-                  ⚠ Устройство удалено
-                </span>
-              )}
-              {step.duration && (
-                <span style={STYLES.chip}>
-                  ⏱ {step.duration.value}
-                  <AccuracyTag accuracy={step.duration.accuracy} />
-                </span>
-              )}
-              {step.temperature && (
-                <span style={STYLES.chip}>
-                  🌡 {step.temperature.value}
-                  <AccuracyTag accuracy={step.temperature.accuracy} />
-                </span>
-              )}
-            </div>
-
-            {/* Expand toggle */}
-            <button onClick={() => toggleStep(i)} style={{
-              padding: '4px 12px', borderRadius: '4px', border: `1px solid ${THEME.border}`,
-              backgroundColor: 'transparent', color: THEME.goldDim, cursor: 'pointer',
-              fontSize: '0.75rem', fontFamily: 'Georgia, serif', marginLeft: '24px',
-            }}>
-              {isExpanded ? 'Скрыть детали ▲' : 'Показать детали ▼'}
-            </button>
-
-            <div style={{
-              marginLeft: '24px', marginTop: isExpanded ? '12px' : '0px',
-              maxHeight: isExpanded ? '2000px' : '0px',
-              overflow: 'hidden',
-              opacity: isExpanded ? 1 : 0,
-              transition: reduceMotion ? 'none' : 'max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease',
-            }}>
-              <div style={{ marginTop: '0px' }}>
-                {/* Готовность */}
-                <div style={{
-                  padding: '10px 14px', marginBottom: '8px',
-                  borderLeft: `3px solid ${THEME.green}`, backgroundColor: THEME.surface,
-                  borderRadius: '0 6px 6px 0',
-                }}>
-                  <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.8rem', color: THEME.green, fontWeight: 'bold', marginBottom: '4px' }}>
-                    <InlineIcon char="✓" color={THEME.green} /> Готовность
-                  </div>
-                  <div style={{ fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.8rem', lineHeight: '1.4' }}>
-                    {step.doneWhen}
-                  </div>
-                </div>
-
-                {/* Если пропустить */}
-                <div style={{
-                  padding: '10px 14px', marginBottom: '8px',
-                  borderLeft: `3px solid ${THEME.red}`, backgroundColor: THEME.surface,
-                  borderRadius: '0 6px 6px 0',
-                }}>
-                  <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.8rem', color: THEME.red, fontWeight: 'bold', marginBottom: '4px' }}>
-                    <InlineIcon char="✗" color={THEME.red} /> Если пропустить
-                  </div>
-                  <div style={{ fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.8rem', lineHeight: '1.4' }}>
-                    {step.ifSkipped}
-                  </div>
-                </div>
-
-                {/* Calibration (air fryer only) */}
-                {isAirFryer && step.calibration && (
-                  <div style={{
-                    padding: '10px 14px',
-                    borderLeft: `3px solid ${THEME.amber}`, backgroundColor: THEME.surface,
-                    borderRadius: '0 6px 6px 0',
-                  }}>
-                    <div style={{ fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.8rem', lineHeight: '1.4' }}>
-                      {step.calibration}
-                    </div>
-                  </div>
-                )}
-
-                {/* User calibration UI (air fryer steps only) */}
-                {isAirFryer && step.calibration && (() => {
-                  const cal = CalibrationStore.get('NinjaMAXPRO', step.id);
-                  const calKey = `NinjaMAXPRO::${step.id}`;
-                  const isEditing = editingCal[calKey] || false;
-                  const form = calFormState[calKey] || { optimalTime: cal ? cal.optimalTime : '', optimalTemp: cal ? cal.optimalTemp : '', notes: cal ? cal.notes : '' };
-
-                  const updateForm = (field, value) => {
-                    setCalFormState(prev => ({ ...prev, [calKey]: { ...prev[calKey], [field]: value } }));
-                  };
-
-                  const handleSaveCal = () => {
-                    CalibrationStore.set('NinjaMAXPRO', step.id, form);
-                    setEditingCal(prev => ({ ...prev, [calKey]: false }));
-                    setCalFormState(prev => { const n = { ...prev }; delete n[calKey]; return n; });
-                    refreshCalibrations();
-                  };
-
-                  const handleResetCal = () => {
-                    const data = CalibrationStore._data;
-                    delete data[calKey];
-                    CalibrationStore._save();
-                    setCalFormState(prev => { const n = { ...prev }; delete n[calKey]; return n; });
-                    refreshCalibrations();
-                  };
-
-                  const startEdit = () => {
-                    setCalFormState(prev => ({
-                      ...prev,
-                      [calKey]: { optimalTime: cal ? cal.optimalTime : '', optimalTemp: cal ? cal.optimalTemp : '', notes: cal ? cal.notes : '' }
-                    }));
-                    setEditingCal(prev => ({ ...prev, [calKey]: true }));
-                  };
-
-                  return (
-                    <div style={{
-                      padding: '12px 14px', marginBottom: '8px',
-                      borderLeft: `3px solid ${THEME.blue}`, backgroundColor: THEME.surface,
-                      borderRadius: '0 6px 6px 0',
-                    }}>
-                      <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.8rem', color: THEME.blue, fontWeight: 'bold', marginBottom: '8px' }}>
-                        📝 Моя калибровка
-                      </div>
-
-                      {cal && !isEditing ? (
-                        /* READ-ONLY saved calibration */
-                        <div>
-                          <div style={{ fontFamily: 'Georgia, serif', color: THEME.textDim, fontSize: '0.8rem', lineHeight: '1.6' }}>
-                            {cal.optimalTime && <span style={{ marginRight: '16px' }}>⏱ <strong>{cal.optimalTime}</strong></span>}
-                            {cal.optimalTemp && <span style={{ marginRight: '16px' }}>🌡 <strong>{cal.optimalTemp}</strong></span>}
-                          </div>
-                          {cal.notes && (
-                            <div style={{ fontFamily: 'Georgia, serif', color: THEME.textMuted, fontSize: '0.75rem', marginTop: '4px', fontStyle: 'italic' }}>
-                              {cal.notes}
-                            </div>
-                          )}
-                          <div style={{ fontFamily: 'Georgia, serif', color: THEME.textMuted, fontSize: '0.7rem', marginTop: '6px' }}>
-                            Откалибровано: {new Date(cal.calibratedAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </div>
-                          <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                            <button onClick={startEdit} style={{
-                              padding: '4px 12px', borderRadius: '4px', border: `1px solid ${THEME.border}`,
-                              backgroundColor: THEME.surface, color: THEME.textDim, cursor: 'pointer',
-                              fontSize: '0.75rem', fontFamily: 'Georgia, serif',
-                            }}>
-                              ✏️ Редактировать
-                            </button>
-                            <button onClick={handleResetCal} style={{
-                              padding: '4px 12px', borderRadius: '4px', border: `1px solid ${THEME.border}`,
-                              backgroundColor: 'transparent', color: THEME.red, cursor: 'pointer',
-                              fontSize: '0.75rem', fontFamily: 'Georgia, serif',
-                            }}>
-                              Сбросить
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        /* EDIT / CREATE form */
-                        <div>
-                          <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '10px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                            <div style={{ flex: '1 1 120px' }}>
-                              <label style={{ display: 'block', fontFamily: 'Georgia, serif', color: THEME.textMuted, fontSize: '0.7rem', marginBottom: '2px' }}>
-                                ⏱ Опт. время
-                              </label>
-                              <input
-                                value={form.optimalTime}
-                                onChange={(e) => updateForm('optimalTime', e.target.value)}
-                                placeholder="12–14 мин"
-                                style={{
-                                  width: '100%', padding: '5px 8px', borderRadius: '4px',
-                                  border: `1px solid ${THEME.border}`, backgroundColor: THEME.card,
-                                  color: THEME.text, fontFamily: 'Georgia, serif', fontSize: inputFontSize,
-                                  boxSizing: 'border-box',
-                                }}
-                              />
-                            </div>
-                            <div style={{ flex: '1 1 120px' }}>
-                              <label style={{ display: 'block', fontFamily: 'Georgia, serif', color: THEME.textMuted, fontSize: '0.7rem', marginBottom: '2px' }}>
-                                🌡 Опт. температура
-                              </label>
-                              <input
-                                value={form.optimalTemp}
-                                onChange={(e) => updateForm('optimalTemp', e.target.value)}
-                                placeholder="195 °C"
-                                style={{
-                                  width: '100%', padding: '5px 8px', borderRadius: '4px',
-                                  border: `1px solid ${THEME.border}`, backgroundColor: THEME.card,
-                                  color: THEME.text, fontFamily: 'Georgia, serif', fontSize: inputFontSize,
-                                  boxSizing: 'border-box',
-                                }}
-                              />
-                            </div>
-                          </div>
-                          <div style={{ marginBottom: '8px' }}>
-                            <label style={{ display: 'block', fontFamily: 'Georgia, serif', color: THEME.textMuted, fontSize: '0.7rem', marginBottom: '2px' }}>
-                              📋 Заметки
-                            </label>
-                            <input
-                              value={form.notes}
-                              onChange={(e) => updateForm('notes', e.target.value)}
-                              placeholder="Первая партия — 12 мин, вторая — 14 мин"
-                              style={{
-                                width: '100%', padding: '5px 8px', borderRadius: '4px',
-                                border: `1px solid ${THEME.border}`, backgroundColor: THEME.card,
-                                color: THEME.text, fontFamily: 'Georgia, serif', fontSize: inputFontSize,
-                                boxSizing: 'border-box',
-                              }}
-                            />
-                          </div>
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                            <button onClick={handleSaveCal} style={{
-                              padding: '5px 16px', borderRadius: '4px', border: 'none',
-                              backgroundColor: THEME.green, color: THEME.bg, cursor: 'pointer',
-                              fontSize: '0.8rem', fontFamily: 'Georgia, serif', fontWeight: 'bold',
-                            }}>
-                              💾 Сохранить
-                            </button>
-                            {cal && (
-                              <button onClick={() => setEditingCal(prev => ({ ...prev, [calKey]: false }))} style={{
-                                padding: '5px 14px', borderRadius: '4px', border: `1px solid ${THEME.border}`,
-                                backgroundColor: THEME.surface, color: THEME.textDim, cursor: 'pointer',
-                                fontSize: '0.8rem', fontFamily: 'Georgia, serif',
-                              }}>
-                                Отмена
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-            </div>
-          </div>
-        );
-      })}
-      )
-      }
-
+      STEPS.map((step, i) => (
+        <StepCard
+          key={i}
+          step={step}
+          index={i}
+          isExpanded={expandedSteps[i] || false}
+          cardPad={cardPad}
+          isMobile={isMobile}
+          inputFontSize={inputFontSize}
+          reduceMotion={reduceMotion}
+          editingCal={editingCal}
+          calFormState={calFormState}
+          setEditingCal={setEditingCal}
+          setCalFormState={setCalFormState}
+          onToggle={toggleStep}
+          onOpenSettings={onOpenSettings}
+          refreshCalibrations={refreshCalibrations}
+        />
+      ))}
+ 
       {/* Equipment-to-step mapping table */}
       <div style={{ marginTop: '20px' }}>
         <button
@@ -2448,10 +2573,19 @@ function App() {
     document.head.appendChild(style);
   }, []);
 
+  // Inject print stylesheet once
+  useEffect(() => {
+    if (document.getElementById('cookingviz-print')) return;
+    const style = document.createElement('style');
+    style.id = 'cookingviz-print';
+    style.textContent = PRINT_CSS;
+    document.head.appendChild(style);
+  }, []);
+
   // Run accuracy verification on mount (re-runs when settings change b/c equipment profiles may change)
   const verificationReport = useMemo(() => runAccuracyVerification(STEPS), [settingsOpen]);
 
-  const switchTab = (tab) => {
+  const switchTab = useCallback((tab) => {
     if (tab === tabVisible || tabFading) return;
     setTabFading(true);
     setTimeout(() => {
@@ -2459,7 +2593,7 @@ function App() {
       setTabVisible(tab);
       setTabFading(false);
     }, reduceMotion ? 0 : 150);
-  };
+  }, [tabVisible, tabFading, reduceMotion]);
 
   return (
     <ErrorBoundary>
