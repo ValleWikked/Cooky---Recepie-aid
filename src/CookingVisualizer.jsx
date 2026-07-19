@@ -654,7 +654,12 @@ const STEPS = [
 // ACCURACY VERIFICATION ENGINE — 9 Core Accuracy Rules
 // ═══════════════════════════════════════════════════════════════
 
+// Each rule below enforces a Core Accuracy Rule from SKILL.md.
+// R1-R9 together audit every time/temperature value across all steps.
 const ACCURACY_RULES = [
+  // R1: Enforces SKILL.md Rule 1 (Three tiers of certainty).
+  // Every duration and temperature MUST declare its accuracy tier.
+  // Violation: step data is missing the accuracy field entirely.
   {
     id: 'R1',
     name: 'AccuracyRequired',
@@ -670,6 +675,9 @@ const ACCURACY_RULES = [
       return { pass: true };
     },
   },
+  // R2: Enforces SKILL.md Rule 1 (estimated tier visibility).
+  // Steps with estimated accuracy MUST render a '~' tag in the UI.
+  // Fix: ensure AccuracyTag receives accuracy='estimated' on the value.
   {
     id: 'R2',
     name: 'EstimatedTag',
@@ -687,6 +695,9 @@ const ACCURACY_RULES = [
       return { pass: true };
     },
   },
+  // R3: Enforces SKILL.md Rule 1 (empirical tier visibility).
+  // Steps with empirical accuracy MUST render a '?' tag in the UI.
+  // Fix: ensure AccuracyTag receives accuracy='empirical' on the value.
   {
     id: 'R3',
     name: 'EmpiricalTag',
@@ -703,6 +714,9 @@ const ACCURACY_RULES = [
       return { pass: true };
     },
   },
+  // R4: Enforces SKILL.md line 174 — "No tag for verified durations".
+  // Verified values must NOT render any badge. Absence implies verification.
+  // Info-level: structural guarantee already enforced by AccuracyTag returning null.
   {
     id: 'R4',
     name: 'VerifiedNoTag',
@@ -714,6 +728,9 @@ const ACCURACY_RULES = [
       return { pass: true };
     },
   },
+  // R5: Enforces SKILL.md Pre-Code Checklist item 5.
+  // Steps with temperature values MUST specify which equipment is used.
+  // Also validates that the referenced equipment exists in EquipmentProfiles.
   {
     id: 'R5',
     name: 'EquipmentRequired',
@@ -733,6 +750,9 @@ const ACCURACY_RULES = [
       return { pass: true };
     },
   },
+  // R6: Enforces SKILL.md Pre-Code Checklist item 5 + calibration rule.
+  // Air fryer steps with estimated accuracy MUST include calibration instructions.
+  // Without calibration, users cannot adjust times for their specific equipment.
   {
     id: 'R6',
     name: 'CalibrationRequired',
@@ -753,6 +773,9 @@ const ACCURACY_RULES = [
       return { pass: true };
     },
   },
+  // R7: Enforces SKILL.md Pre-Code Checklist item 5 (step completeness).
+  // Every step needs a concrete sensory "done-when" cue.
+  // Without it, users cannot determine when the step is finished.
   {
     id: 'R7',
     name: 'DoneWhenRequired',
@@ -765,6 +788,9 @@ const ACCURACY_RULES = [
       return { pass: true };
     },
   },
+  // R8: Enforces SKILL.md Core Accuracy Rule structure (consequence awareness).
+  // Every step needs a concrete "if-skipped" consequence warning.
+  // Users must understand the impact of skipping each step.
   {
     id: 'R8',
     name: 'IfSkippedRequired',
@@ -777,6 +803,9 @@ const ACCURACY_RULES = [
       return { pass: true };
     },
   },
+  // R9: Enforces SKILL.md Core Accuracy Rule 3 (verified equipment specs).
+  // Kenwood FDP22 bowl is verified at 2.1 L from manufacturer spec.
+  // "1.5 L" is a known documentation error that must never appear.
   {
     id: 'R9',
     name: 'KenwoodBowl',
