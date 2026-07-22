@@ -76,6 +76,15 @@ const STYLES = {
 // ═══════════════════════════════════════════════════════════════
 
 let _showToast = null;
+let _pendingToast = null;
+
+function _queueToast(message) {
+  if (_showToast) {
+    _showToast(message);
+  } else {
+    _pendingToast = message;
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════
 // EQUIPMENT PROFILES — localStorage-backed profile store
@@ -156,7 +165,7 @@ const EquipmentProfiles = {
       }
     } catch (e) {
       // Corrupt data — reset to defaults + notify user
-      _showToast?.('Equipment data corrupted. Settings have been reset.');
+      _queueToast('Equipment data corrupted. Settings have been reset.');
     }
     if (!this._profiles) {
       this._profiles = DEFAULT_PROFILES.map(p => ({ ...p }));
@@ -220,7 +229,7 @@ const CalibrationStore = {
       }
     } catch (e) {
       // Corrupt — start fresh + notify user
-      _showToast?.('Calibration data corrupted. Settings have been reset.');
+      _queueToast('Calibration data corrupted. Settings have been reset.');
     }
     if (!this._data) {
       this._data = {};
@@ -300,6 +309,7 @@ const INGREDIENTS = [
     role: 'Sweetness, aromatic depth, moisture in raw mix',
     necessity: 'IMPORTANT',
     amount: '80 g (~1 medium onion)',
+    toleranceZone: { type: 'moderate', description: 'Moderate tolerance — use ¾×–1×; above adds excess moisture' },
     variants: [
       { label: 'Fresh', description: 'Standard. Releases moisture when chopped — account for binding.', quantity: '80 g' },
       { label: 'Dried (powder)', description: '~1 tsp instead of 80 g. Adds no moisture — mix is drier.', quantity: '1 tsp' },
@@ -1360,22 +1370,22 @@ function IngredientPanel() {
           </p>
         </div>
       ) : (
-      INGREDIENTS.map((ing, i) => (
-        <IngredientCard
-          key={i}
-          ing={ing}
-          index={i}
-          isExpanded={expandedCards[i] || false}
-          isMobile={isMobile}
-          cardPad={cardPad}
-          cellMinWidth={cellMinWidth}
-          matrixMinWidth={matrixMinWidth}
-          ingNameSize={ingNameSize}
-          reduceMotion={reduceMotion}
-          onToggle={toggleCard}
-        />
-      ))
-      }
+        INGREDIENTS.map((ing, i) => (
+          <IngredientCard
+            key={i}
+            ing={ing}
+            index={i}
+            isExpanded={expandedCards[i] || false}
+            isMobile={isMobile}
+            cardPad={cardPad}
+            cellMinWidth={cellMinWidth}
+            matrixMinWidth={matrixMinWidth}
+            ingNameSize={ingNameSize}
+            reduceMotion={reduceMotion}
+            onToggle={toggleCard}
+          />
+        ))
+      )}
     </div>
   );
 }
@@ -1597,6 +1607,7 @@ const StepCard = memo(function StepCard({ step, index, isExpanded, cardPad, isMo
                           value={form.optimalTime}
                           onChange={(e) => updateForm('optimalTime', e.target.value)}
                           placeholder="12–14 min"
+                          data-testid={`cal-time-input-${step.id}`}
                           style={{
                             width: '100%', padding: '5px 8px', borderRadius: '4px',
                             border: `1px solid ${THEME.border}`, backgroundColor: THEME.card,
@@ -1639,7 +1650,7 @@ const StepCard = memo(function StepCard({ step, index, isExpanded, cardPad, isMo
                       />
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <button onClick={handleSaveCal} style={{
+                      <button onClick={handleSaveCal} data-testid={`cal-save-btn-${step.id}`} style={{
                         padding: '5px 16px', borderRadius: '4px', border: 'none',
                         backgroundColor: THEME.green, color: THEME.bg, cursor: 'pointer',
                         fontSize: '0.8rem', fontFamily: 'Georgia, serif', fontWeight: 'bold',
@@ -1857,25 +1868,26 @@ function ActionStepsPanel({ onOpenSettings, verificationReport }) {
           </p>
         </div>
       ) : (
-      STEPS.map((step, i) => (
-        <StepCard
-          key={i}
-          step={step}
-          index={i}
-          isExpanded={expandedSteps[i] || false}
-          cardPad={cardPad}
-          isMobile={isMobile}
-          inputFontSize={inputFontSize}
-          reduceMotion={reduceMotion}
-          editingCal={editingCal}
-          calFormState={calFormState}
-          setEditingCal={setEditingCal}
-          setCalFormState={setCalFormState}
-          onToggle={toggleStep}
-          onOpenSettings={onOpenSettings}
-          refreshCalibrations={refreshCalibrations}
-        />
-      ))}
+        STEPS.map((step, i) => (
+          <StepCard
+            key={i}
+            step={step}
+            index={i}
+            isExpanded={expandedSteps[i] || false}
+            cardPad={cardPad}
+            isMobile={isMobile}
+            inputFontSize={inputFontSize}
+            reduceMotion={reduceMotion}
+            editingCal={editingCal}
+            calFormState={calFormState}
+            setEditingCal={setEditingCal}
+            setCalFormState={setCalFormState}
+            onToggle={toggleStep}
+            onOpenSettings={onOpenSettings}
+            refreshCalibrations={refreshCalibrations}
+          />
+        ))
+      )}
  
       {/* Equipment-to-step mapping table */}
       <div style={{ marginTop: '20px' }}>
@@ -2288,7 +2300,7 @@ function EquipmentSettingsPanel({ onClose }) {
           <h2 style={{ fontFamily: 'Georgia, serif', color: THEME.goldLight, fontSize: '1.3rem', margin: 0 }}>
             ⚙️ Equipment
           </h2>
-          <button onClick={doClose} style={{
+          <button onClick={doClose} data-testid="close-settings-btn" style={{
             background: 'none', border: 'none', color: THEME.textDim, cursor: 'pointer',
             fontSize: '1.5rem', lineHeight: '1',
           }}>✕</button>
@@ -2313,54 +2325,53 @@ function EquipmentSettingsPanel({ onClose }) {
             </button>
           </div>
         ) : (
-        /* Profile list */
-        profiles.map((profile) => {
-          const ti = typeInfo(profile.type);
-          return (
-            <div key={profile.id} style={{
-              ...STYLES.card, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '12px 16px',
-            }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                  <span style={{ fontSize: '1.1rem' }}>{profile.icon || '⚙️'}</span>
-                  <span style={{ fontFamily: 'Georgia, serif', color: THEME.goldLight, fontWeight: 'bold', fontSize: '0.95rem' }}>
-                    {profile.name}
-                  </span>
-                  <span style={STYLES.badge(THEME.goldDim)}>{ti.label}</span>
-                  {profile.isDefault && (
-                    <span title="Built-in device — cannot be deleted" style={{ color: THEME.textMuted, fontSize: '0.85rem' }}>🔒</span>
+          /* Profile list */
+          profiles.map((profile) => {
+            const ti = typeInfo(profile.type);
+            return (
+              <div key={profile.id} data-testid={`profile-row-${profile.id}`} style={{
+                ...STYLES.card, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '12px 16px',
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '1.1rem' }}>{profile.icon || '⚙️'}</span>
+                    <span style={{ fontFamily: 'Georgia, serif', color: THEME.goldLight, fontWeight: 'bold', fontSize: '0.95rem' }}>
+                      {profile.name}
+                    </span>
+                    <span style={STYLES.badge(THEME.goldDim)}>{ti.label}</span>
+                    {profile.isDefault && (
+                      <span title="Built-in device — cannot be deleted" style={{ color: THEME.textMuted, fontSize: '0.85rem' }}>🔒</span>
+                    )}
+                  </div>
+                  <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.75rem', color: THEME.textDim, marginTop: '2px' }}>
+                    {profile.capacity && <span style={{ marginRight: '10px' }}>Capacity: {profile.capacity}</span>}
+                    {profile.maxTemp != null && <span style={{ marginRight: '10px' }}>Max temp: {profile.maxTemp}°C</span>}
+                    {profile.bowlCapacity && <span style={{ marginRight: '10px' }}>Bowl: {profile.bowlCapacity}</span>}
+                    {(profile.modes || []).length > 0 && <span>Modes: {(profile.modes || []).join(', ')}</span>}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '12px' }}>
+                  <button onClick={() => openEdit(profile)} data-testid={`edit-btn-${profile.id}`} style={{
+                    background: 'none', border: `1px solid ${THEME.border}`, borderRadius: '4px',
+                    color: THEME.textDim, cursor: 'pointer', padding: '4px 8px', fontSize: '0.85rem',
+                  }} title="Edit">✏️</button>
+                  {profile.isDefault ? (
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      width: '30px', height: '30px', color: THEME.textMuted, fontSize: '0.9rem',
+                    }} title="Built-in device — cannot be deleted">🔒</span>
+                  ) : (
+                    <button onClick={() => setConfirmDeleteId(profile.id)} data-testid={`delete-btn-${profile.id}`} style={{
+                      background: 'none', border: `1px solid ${THEME.border}`, borderRadius: '4px',
+                      color: THEME.red, cursor: 'pointer', padding: '4px 8px', fontSize: '0.85rem',
+                    }} title="Delete">🗑️</button>
                   )}
                 </div>
-                <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.75rem', color: THEME.textDim, marginTop: '2px' }}>
-                  {profile.capacity && <span style={{ marginRight: '10px' }}>Capacity: {profile.capacity}</span>}
-                  {profile.maxTemp != null && <span style={{ marginRight: '10px' }}>Max temp: {profile.maxTemp}°C</span>}
-                  {profile.bowlCapacity && <span style={{ marginRight: '10px' }}>Bowl: {profile.bowlCapacity}</span>}
-                  {(profile.modes || []).length > 0 && <span>Modes: {(profile.modes || []).join(', ')}</span>}
-                </div>
               </div>
-              <div style={{ display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '12px' }}>
-                <button onClick={() => openEdit(profile)} style={{
-                  background: 'none', border: `1px solid ${THEME.border}`, borderRadius: '4px',
-                  color: THEME.textDim, cursor: 'pointer', padding: '4px 8px', fontSize: '0.85rem',
-                }} title="Edit">✏️</button>
-                {profile.isDefault ? (
-                  <span style={{
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    width: '30px', height: '30px', color: THEME.textMuted, fontSize: '0.9rem',
-                  }} title="Built-in device — cannot be deleted">🔒</span>
-                ) : (
-                  <button onClick={() => setConfirmDeleteId(profile.id)} style={{
-                    background: 'none', border: `1px solid ${THEME.border}`, borderRadius: '4px',
-                    color: THEME.red, cursor: 'pointer', padding: '4px 8px', fontSize: '0.85rem',
-                  }} title="Delete">🗑️</button>
-                )}
-              </div>
-            </div>
-          );
-        })}
-        )
-        }
+            );
+          })
+        )}
 
         {/* Delete confirmation */}
         {confirmDeleteId && (() => {
@@ -2374,7 +2385,7 @@ function EquipmentSettingsPanel({ onClose }) {
                 Delete "{p ? p.name : ''}"? This action cannot be undone. Steps referencing this device will show a warning.
               </p>
               <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                <button onClick={() => handleDelete(confirmDeleteId)} style={{
+                <button onClick={() => handleDelete(confirmDeleteId)} data-testid="confirm-delete-btn" style={{
                   padding: '6px 16px', borderRadius: '6px', border: 'none',
                   backgroundColor: THEME.red, color: THEME.bg, cursor: 'pointer',
                   fontFamily: 'Georgia, serif', fontSize: '0.85rem',
@@ -2391,7 +2402,7 @@ function EquipmentSettingsPanel({ onClose }) {
 
         {/* Add / Edit form */}
         {!showAddForm ? (
-          <button onClick={() => { resetForm(); setShowAddForm(true); }} style={{
+          <button onClick={() => { resetForm(); setShowAddForm(true); }} data-testid="add-device-btn" style={{
             marginTop: '16px', padding: '10px 20px', borderRadius: '8px',
             border: `2px dashed ${THEME.goldDim}`, backgroundColor: 'transparent',
             color: THEME.goldDim, cursor: 'pointer', fontFamily: 'Georgia, serif',
@@ -2417,6 +2428,7 @@ function EquipmentSettingsPanel({ onClose }) {
               </label>
               <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="E.g.: My Oven"
+                data-testid="profile-name-input"
                 style={{
                   width: '100%', padding: '8px 10px', borderRadius: '6px',
                   border: `1px solid ${THEME.border}`, backgroundColor: THEME.surface,
@@ -2521,7 +2533,7 @@ function EquipmentSettingsPanel({ onClose }) {
 
             {/* Buttons */}
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={handleSubmit} style={{
+              <button onClick={handleSubmit} data-testid="profile-save-btn" style={{
                 padding: '8px 20px', borderRadius: '6px', border: 'none',
                 backgroundColor: THEME.gold, color: THEME.bg, cursor: 'pointer',
                 fontFamily: 'Georgia, serif', fontSize: '0.9rem', fontWeight: 'bold',
@@ -2587,6 +2599,10 @@ function App() {
   // Register global toast dispatcher for storage modules
   useEffect(() => {
     _showToast = setToast;
+    if (_pendingToast) {
+      setToast(_pendingToast);
+      _pendingToast = null;
+    }
     return () => { _showToast = null; };
   }, []);
 
@@ -2641,6 +2657,7 @@ function App() {
           <button
             onClick={() => setSettingsOpen(true)}
             title="Equipment Settings"
+            data-testid="equipment-settings-btn"
             style={{
               background: 'none', border: `1px solid ${THEME.border}`, borderRadius: '8px',
               color: THEME.textDim, cursor: 'pointer',
