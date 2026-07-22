@@ -77,3 +77,39 @@ A single-page React application for detailed cooking recipe analysis. Two main s
 ## License
 
 Internal project. All rights reserved.
+
+## Testing
+
+### Install
+
+```bash
+npm install
+npx playwright install
+```
+
+### Run E2E tests locally
+
+```bash
+# Headless (all browsers)
+npm run test:e2e
+
+# Playwright UI mode
+npm run test:e2e:ui
+
+# Headed mode (visible browser window)
+npm run test:e2e:headed
+```
+
+Tests are located under `tests/` and require Node.js ≥ 18.
+
+### Covered scenarios
+
+| File | Scenarios |
+|------|-----------|
+| `tests/smoke.spec.ts` | App loads, page title, Ingredients and Cooking Steps tabs visible, tab switching |
+| `tests/persistence.spec.ts` | Equipment profile add/edit/delete, calibration save and reload persistence |
+| `tests/localstorage-recovery.spec.ts` | App loads and shows toast when `cookingviz_equipment` or `cookingviz_calibrations` contains invalid JSON |
+| `tests/responsive.spec.ts` | Tab visibility, tab switch, settings button reachability, no horizontal overflow at mobile (375 px), tablet (768 px), and desktop (1280 px) |
+
+CI runs automatically on every push and pull request via `.github/workflows/playwright.yml`.  
+The Playwright HTML report is uploaded as an artifact on failure.
